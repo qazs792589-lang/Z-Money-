@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+:root {
+  --bg-primary: #0a0a0c;
+  --bg-secondary: #16161a;
+  --bg-tertiary: #1f1f23;
+  --accent: #00f2ff;
+  --success: #ff5252;
+  --danger: #16a34a;
+  --text-main: #e0e0e0;
+  --text-dim: #888891;
+  --border: #2d2d33;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--bg-primary)] text-[var(--bg-main)] font-sans antialiased;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+  }
+}
+
+@layer components {
+  .elegant-card {
+    @apply bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5 relative;
+  }
+  
+  .elegant-input {
+    @apply bg-[var(--bg-primary)] border border-[var(--border)] text-white p-2.5 rounded font-mono w-full focus:outline-none focus:border-[var(--accent)];
+  }
+
+  .elegant-label {
+    @apply block text-[11px] text-[var(--text-dim)] mb-1 uppercase tracking-wider;
+  }
+  
+  .stat-box {
+    @apply bg-[var(--bg-tertiary)] p-4 rounded-lg border-l-4 border-[var(--accent)];
+  }
+}
+
+/* Custom Scrollbar for Dark Theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary); 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim); 
+}
