@@ -1,18 +1,26 @@
 import fs from 'fs';
 import path from 'path';
+import yahooFinance from 'yahoo-finance2';
 
-// 示範腳本：實際應用建議使用 axios 或 node-fetch 呼叫真正的金融 API
 async function updatePrices() {
   console.log('正在取得最新股價...');
 
-  // TODO: 這裡請替換成您實際串接 API 的邏輯 (例如呼叫 Yahoo Finance)
-  // 此處先模擬產生資料
+  const tickers = ['0050.TW', '2330.TW'];
+  const prices = {};
+
+  for (const ticker of tickers) {
+    try {
+      const quote = await yahooFinance.quote(ticker);
+      prices[ticker] = quote.regularMarketPrice.toFixed(2);
+      console.log(`${ticker}: ${prices[ticker]}`);
+    } catch (e) {
+      console.error(`取得 ${ticker} 失敗:`, e);
+    }
+  }
+
   const data = {
     updated: new Date().toISOString(),
-    prices: {
-        "0050.TW": (Math.random() * 10 + 145).toFixed(2),
-        "2330.TW": (Math.random() * 20 + 790).toFixed(2)
-    }
+    prices: prices
   };
 
   const dir = path.join(process.cwd(), 'data');
