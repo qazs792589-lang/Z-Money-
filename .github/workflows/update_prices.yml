@@ -1,0 +1,34 @@
+name: Update Stock Prices
+on:
+  schedule:
+    # 執行時間為週一至週五的 14:00 (台灣時間)
+    # 台灣時間為 UTC+8，所以 14:00 - 8 = 06:00 (UTC)
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 確保機器人有權限提交檔案回倉庫
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run update script
+        run: node scripts/updatePrices.js
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/prices.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock prices" && git push)
