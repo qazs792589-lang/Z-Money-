@@ -129,8 +129,7 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { 
 
       setLoading(true);
       try {
-        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-        const res = await fetch(`${baseUrl}/api/chart/${ticker}`);
+        const res = await fetch(`/api/chart/${ticker}`);
         if (!res.ok) throw new Error('API not available');
         const data = await res.json();
         if (active) {
@@ -925,18 +924,22 @@ export default function App() {
                                    </div>
                                    
                                    {/* Sub-stats for all viewports */}
-                                   <div className="grid grid-cols-5 gap-2 md:gap-4 pt-6 border-t border-white/5">
+                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pt-8 border-t border-white/10">
                                       <div>
-                                         <span className="text-[9px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 block mb-1">持有股數</span>
-                                         <p className="text-lg md:text-xl lg:text-2xl font-mono font-black text-white">{h.currentShares.toLocaleString()}</p>
+                                         <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">持有股數</span>
+                                         <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-white leading-none">{h.currentShares.toLocaleString()}</p>
                                       </div>
                                       <div>
-                                         <span className="text-[9px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 block mb-1">目前市價</span>
-                                         <p className="text-lg md:text-xl lg:text-2xl font-mono font-black text-white">${curPrice}</p>
+                                         <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">目前市價</span>
+                                         <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-white leading-none">${curPrice}</p>
                                       </div>
                                       <div>
-                                         <span className="text-[9px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 block mb-1">平均成本</span>
-                                         <p className="text-lg md:text-xl lg:text-2xl font-mono font-black text-white">${h.avgCost.toFixed(2)}</p>
+                                         <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">平均成本</span>
+                                         <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-white leading-none">${h.avgCost.toFixed(2)}</p>
+                                      </div>
+                                      <div>
+                                         <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">總投入本金</span>
+                                         <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-white leading-none">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                       </div>
                                    </div>
                                 </div>

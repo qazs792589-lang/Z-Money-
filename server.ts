@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
+import yahooFinance from 'yahoo-finance2';
 
 async function startServer() {
   const app = express();
@@ -58,33 +59,25 @@ async function startServer() {
     try {
       const ticker = req.params.ticker;
       const symbol = /^\d+$/.test(ticker) ? `${ticker}.TW` : ticker;
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5y&interval=1d`;
       
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
+      // 使用 yahoo-finance2 抓取歷史資料
+      const result = await yahooFinance.chart(symbol, {
+        period1: '2020-01-01', 
+        interval: '1d'
       });
-      
-      if (!response.ok) throw new Error("Yahoo Finance fetch failed");
-      const data = await response.json();
-      
-      if (!data.chart.result || data.chart.result.length === 0) {
-        return res.json([]);
-      }
-      
-      const result = data.chart.result[0];
-      const timestamps = result.timestamp || [];
-      const closePrices = result.indicators?.quote?.[0]?.close || [];
-      
-      const chartData = timestamps.map((ts: number, i: number) => {
-        const date = new Date(ts * 1000);
-        return {
-          date: `${date.getMonth() + 1}/${date.getDate()}`,
-          timestamp: ts * 1000,
-          price: closePrices[i] ? Number(closePrices[i].toFixed(2)) : null
-        };
-      }).filter((item: any) => item.price !== null);
+
+      if (!result || !result.quotes) return res.json([]);
+
+      const chartData = result.quotes
+        .filter(q => q.close !== null && q.close !== undefined)
+        .map(q => {
+          const date = new Date(q.date);
+          return {
+            date: `${date.getMonth() + 1}/${date.getDate()}`,
+            timestamp: date.getTime(),
+            price: Number(q.close!.toFixed(2))
+          };
+        });
       
       res.json(chartData);
     } catch (error) {
