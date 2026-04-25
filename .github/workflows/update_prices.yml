@@ -1,16 +1,14 @@
 name: Update Stock Prices
 on:
   schedule:
-    # 執行時間為週一至週五的 14:00 (台灣時間)
-    # 台灣時間為 UTC+8，所以 14:00 - 8 = 06:00 (UTC)
+    # 執行時間為週一至週五的 14:00 (UTC+0)
+    # 台灣時間為 14:00，UTC 為 06:00
     - cron: '0 6 * * 1-5'
   workflow_dispatch:
 
 jobs:
   update-prices:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # 確保機器人有權限提交檔案回倉庫
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

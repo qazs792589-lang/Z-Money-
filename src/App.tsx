@@ -301,6 +301,24 @@ export default function App() {
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>([]);
   
+  // 讀取 GitHub Pages 上的價格資料
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        // 請將 YOUR_USERNAME/YOUR_REPO 換成您實際的 GitHub 帳號與專案名稱
+        // 加上時間戳記 ?t=${Date.now()} 以避免 cache
+        const response = await fetch(`https://qazs792589.github.io/Z-Money-/data/prices.json?t=${Date.now()}`);
+        if (!response.ok) throw new Error('Failed to load prices');
+        const data = await response.json();
+        console.log('Got remote prices:', data);
+        // 您可以在這裡將 data 更新到您的週線圖狀態中
+      } catch (e) {
+        console.error('Error fetching remote prices:', e);
+      }
+    };
+    fetchPrices();
+  }, []);
+  
   // Fetch market prices from server
   useEffect(() => {
     const fetchPrices = async () => {
