@@ -122,13 +122,16 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: stri
     const fetchChartData = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/chart/${ticker}`);
+        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+        const res = await fetch(`${baseUrl}/api/chart/${ticker}`);
+        if (!res.ok) throw new Error('API not available');
         const data = await res.json();
         if (active) {
           setChartData(data);
           setLoading(false);
         }
       } catch (err) {
+        console.warn(`Chart API failed, this is expected on static hosts like GitHub Pages. Ticker: ${ticker}`);
         if (active) setLoading(false);
       }
     };
@@ -305,32 +308,38 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        // 使用 import.meta.env.BASE_URL 確保在 GitHub Pages 子路徑下能正確讀取檔案
-        const response = await fetch(`${import.meta.env.BASE_URL}stock_prices.json?t=${Date.now()}`);
+        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/stock_prices.json?t=${Date.now()}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        console.log('Got remote prices:', data);
-        // 您可以在這裡將 data 更新到您的狀態中
+        console.log('Successfully loaded prices from static file:', data);
+        if (data && data.prices) {
+          setMarketData(data);
+        }
       } catch (e) {
-        console.error('Error fetching remote prices:', e);
+        console.error('Error fetching static prices:', e);
       }
     };
     fetchPrices();
   }, []);
   
-  // Fetch market prices from server
+  // Fetch market prices from server (Fallback for local dev)
   useEffect(() => {
     const fetchPrices = async () => {
+      if (marketData.prices && Object.keys(marketData.prices).length > 0) return;
+      
       try {
-        const res = await fetch('/api/prices');
+        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+        const res = await fetch(`${baseUrl}/api/prices`);
+        if (!res.ok) return;
         const data = await res.json();
         setMarketData(data);
       } catch (err) {
-        console.error("Failed to fetch market prices:", err);
+        // Silently fail as we have static fallback
       }
     };
     fetchPrices();
-  }, []);
+  }, [marketData.prices]);
   
   // Form State
   const [formData, setFormData] = useState({
