@@ -305,9 +305,9 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        // 使用相對路徑 fetch，這在同個網站下的 GitHub Pages 應該是最安全的方式
+        // 使用正確的路徑 fetch，此處改為 fetch 根目錄下的 stock_prices.json
         // 加上時間戳記避免快取
-        const response = await fetch(`./data/prices.json?t=${Date.now()}`);
+        const response = await fetch(`./stock_prices.json?t=${Date.now()}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         console.log('Got remote prices:', data);
