@@ -305,9 +305,8 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        // 使用正確的路徑 fetch，此處改為 fetch 根目錄下的 stock_prices.json
-        // 加上時間戳記避免快取
-        const response = await fetch(`./stock_prices.json?t=${Date.now()}`);
+        // 使用 import.meta.env.BASE_URL 確保在 GitHub Pages 子路徑下能正確讀取檔案
+        const response = await fetch(`${import.meta.env.BASE_URL}stock_prices.json?t=${Date.now()}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         console.log('Got remote prices:', data);
