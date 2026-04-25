@@ -305,12 +305,13 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        // 使用完整的 GitHub Pages 網址以確保讀取到正確的檔案
-        const response = await fetch(`https://qazs792589.github.io/Z-Money-/data/prices.json?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Failed to load prices');
+        // 使用相對路徑 fetch，這在同個網站下的 GitHub Pages 應該是最安全的方式
+        // 加上時間戳記避免快取
+        const response = await fetch(`./data/prices.json?t=${Date.now()}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         console.log('Got remote prices:', data);
-        // 您可以在這裡將 data 更新到您的週線圖狀態中
+        // 您可以在這裡將 data 更新到您的狀態中
       } catch (e) {
         console.error('Error fetching remote prices:', e);
       }
