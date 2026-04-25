@@ -305,8 +305,7 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        // 請將 YOUR_USERNAME/YOUR_REPO 換成您實際的 GitHub 帳號與專案名稱
-        // 加上時間戳記 ?t=${Date.now()} 以避免 cache
+        // 使用完整的 GitHub Pages 網址以確保讀取到正確的檔案
         const response = await fetch(`https://qazs792589.github.io/Z-Money-/data/prices.json?t=${Date.now()}`);
         if (!response.ok) throw new Error('Failed to load prices');
         const data = await response.json();
