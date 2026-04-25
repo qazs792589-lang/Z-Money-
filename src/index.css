@@ -29,7 +29,7 @@
   .elegant-card {
     @apply bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5 relative;
   }
-  
+
   .elegant-input {
     @apply bg-[var(--bg-primary)] border border-[var(--border)] text-white p-2.5 rounded font-mono w-full focus:outline-none focus:border-[var(--accent)];
   }
@@ -37,7 +37,7 @@
   .elegant-label {
     @apply block text-[11px] text-[var(--text-dim)] mb-1 uppercase tracking-wider;
   }
-  
+
   .stat-box {
     @apply bg-[var(--bg-tertiary)] p-4 rounded-lg border-l-4 border-[var(--accent)];
   }
@@ -48,13 +48,16 @@
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary); 
+  background: var(--bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--border); 
+  background: var(--border);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim); 
+  background: var(--text-dim);
 }

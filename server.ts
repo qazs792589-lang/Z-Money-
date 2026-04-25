@@ -73,7 +73,7 @@ async function startServer() {
         .map(q => {
           const date = new Date(q.date);
           return {
-            date: `${date.getMonth() + 1}/${date.getDate()}`,
+            date: date.toISOString().split('T')[0],
             timestamp: date.getTime(),
             price: Number(q.close!.toFixed(2))
           };
