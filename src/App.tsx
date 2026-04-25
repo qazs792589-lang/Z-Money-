@@ -113,7 +113,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   }
 ];
 
-const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: string, transactions: Transaction[], weeklyPrices: WeeklyPrice[] }) => {
+const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { ticker: string, transactions: Transaction[], weeklyPrices: WeeklyPrice[], marketData: any }) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,11 +146,21 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: stri
   }, [ticker]);
 
   const combinedData = useMemo(() => {
-    const dataToUse = weeklyPrices.length > 0 ? weeklyPrices.map(wp => ({
+    let dataToUse = weeklyPrices.length > 0 ? weeklyPrices.map(wp => ({
       date: wp.date,
       timestamp: new Date(wp.date).getTime(),
       price: wp.price
     })) : chartData;
+
+    // Fallback: If no history, see if we have a current static price
+    const currentPrice = marketData.prices?.[ticker];
+    if (dataToUse.length === 0 && currentPrice) {
+      dataToUse = [{
+        date: '今日',
+        timestamp: Date.now(),
+        price: currentPrice
+      }];
+    }
 
     if (!dataToUse.length) return [];
     
@@ -203,7 +213,7 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: stri
     const startTimestamp = firstTxDateObj.getTime() - (7 * 24 * 60 * 60 * 1000); // 1 week before first tx
     return dataWithHoldings.filter(d => d.timestamp >= startTimestamp);
 
-  }, [chartData, transactions]);
+  }, [chartData, transactions, weeklyPrices]);
 
   const yahooSymbol = /^\d+$/.test(ticker) ? `${ticker}.TW` : ticker;
   const yahooUrl = `https://tw.stock.yahoo.com/quote/${yahooSymbol}/chart`;
@@ -221,8 +231,12 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: stri
             <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : combinedData.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-[var(--text-dim)]">
-             等待資料中 (尚無持倉紀錄或無法讀取)
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-[var(--text-dim)] text-center px-4 leading-relaxed">
+             等待資料中...<br/>
+             <span className="opacity-70">
+               (系統會在部署時自動抓取最新股市價格)<br/>
+               若無顯示，請在「每週收盤價登錄」手動輸入，或點選其他股票
+             </span>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -314,17 +328,23 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
+        // 先嘗試最簡單的相對路徑
+        const response = await fetch('stock_prices.json?t=' + Date.now());
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.prices) setMarketData(data);
+          return;
+        }
+        
+        // 如果失敗，嘗試使用 BASE_URL 構建
         const isStatic = window.location.hostname.endsWith('github.io') || window.location.hostname.includes('github.io');
-        // 在 GitHub Pages 上，BASE_URL 是包含子路徑的，例如 /Z-Money-/
-        // 我們直接抓取相對路徑的文件
         const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
         const urlPath = isStatic ? `${baseUrl}/stock_prices.json` : `/stock_prices.json`;
         
-        const response = await fetch(`${urlPath}?t=${Date.now()}`);
-        if (!response.ok) return;
-        const data = await response.json();
-        if (data && data.prices) {
-          setMarketData(data);
+        const res2 = await fetch(`${urlPath}?t=${Date.now()}`);
+        if (res2.ok) {
+          const data = await res2.json();
+          if (data && data.prices) setMarketData(data);
         }
       } catch (e) {
         // Silently skip
@@ -342,8 +362,7 @@ export default function App() {
       if (marketData.prices && Object.keys(marketData.prices).length > 0) return;
       
       try {
-        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-        const res = await fetch(`${baseUrl}/api/prices`);
+        const res = await fetch('/api/prices');
         if (!res.ok) return;
         const data = await res.json();
         setMarketData(data);
@@ -925,7 +944,7 @@ export default function App() {
                                 {/* The Integrated Chart Area (Always bottom) */}
                                 <div className="p-4 md:p-8 bg-black/20">
                                    <div className="h-[300px] md:h-[450px] rounded-xl overflow-hidden border border-white/5 relative group">
-                                      <StockChartWidget ticker={ticker} transactions={txs} weeklyPrices={weeklyPrices.filter(wp => wp.ticker === ticker)} />
+                                      <StockChartWidget ticker={ticker} transactions={txs} weeklyPrices={weeklyPrices.filter(wp => wp.ticker === ticker)} marketData={marketData} />
                                    </div>
                                 </div>
                              </div>
