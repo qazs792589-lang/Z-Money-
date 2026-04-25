@@ -1,27 +1,32 @@
-name: Deploy React App
-
+name: Update Stock Prices
 on:
-  push:
-    branches:
-      - main
-
-# 加入此處權限設定
-permissions:
-  contents: write
+  schedule:
+    # 執行時間為週一至週五的 14:00 (UTC+0)
+    # 台灣時間為 14:00，UTC 為 06:00
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  update-prices:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install and Build
-        run: |
-          npm install
-          npm run build
-
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          folder: dist # 打包出來的資料夾
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run update script
+        run: node scripts/updatePrices.js
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/prices.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock prices" && git push)
