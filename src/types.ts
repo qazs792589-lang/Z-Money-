@@ -43,3 +43,9 @@ export interface RealizedProfit {
   daysHeld: number;
   closeDate: string;
 }
+
+export interface WeeklyPrice {
+  date: string;
+  ticker: string;
+  price: number;
+}

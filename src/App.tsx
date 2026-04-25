@@ -45,7 +45,8 @@ import {
   TransactionDirection, 
   Config, 
   Holding, 
-  RealizedProfit 
+  RealizedProfit,
+  WeeklyPrice
 } from './types';
 const DEFAULT_CONFIGS: Record<TransactionCategory, Config> = {
   General: {
@@ -112,7 +113,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   }
 ];
 
-const StockChartWidget = ({ ticker, transactions }: { ticker: string, transactions: Transaction[] }) => {
+const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: string, transactions: Transaction[], weeklyPrices: WeeklyPrice[] }) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -136,18 +137,24 @@ const StockChartWidget = ({ ticker, transactions }: { ticker: string, transactio
   }, [ticker]);
 
   const combinedData = useMemo(() => {
-    if (!chartData.length) return [];
+    const dataToUse = weeklyPrices.length > 0 ? weeklyPrices.map(wp => ({
+      date: wp.date,
+      timestamp: new Date(wp.date).getTime(),
+      price: wp.price
+    })) : chartData;
+
+    if (!dataToUse.length) return [];
     
     // Sort transactions oldest to newest
     const sortedTxs = [...transactions].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    if (sortedTxs.length === 0) return chartData;
+    if (sortedTxs.length === 0) return dataToUse;
 
     let currentShares = 0;
     let totalInvested = 0;
     let txIndex = 0;
     
     // Map API chart data to add daily position holding values
-    const dataWithHoldings = chartData.map(point => {
+    const dataWithHoldings = dataToUse.map(point => {
       const pd = new Date(point.timestamp);
       // Format to YYYY-MM-DD
       const pointDateStr = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2, '0')}-${String(pd.getDate()).padStart(2, '0')}`;
@@ -292,6 +299,7 @@ export default function App() {
   const [marketData, setMarketData] = useState<{ updated: string | null; prices: Record<string, number> }>({ updated: null, prices: {} });
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
+  const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>([]);
   
   // Fetch market prices from server
   useEffect(() => {
@@ -878,8 +886,45 @@ export default function App() {
                                 {/* The Integrated Chart Area (Always bottom) */}
                                 <div className="p-4 md:p-8 bg-black/20">
                                    <div className="h-[300px] md:h-[450px] rounded-xl overflow-hidden border border-white/5 relative group">
-                                      <StockChartWidget ticker={ticker} transactions={txs} />
+                                      <StockChartWidget ticker={ticker} transactions={txs} weeklyPrices={weeklyPrices.filter(wp => wp.ticker === ticker)} />
                                    </div>
+                                </div>
+                             </div>
+
+                             {/* Weekly Price Input Section */}
+                             <div className="bg-white/[0.02] p-6 border-b border-white/5 space-y-4">
+                                <span className="text-[9px] font-black tracking-[0.2em] text-white/50 uppercase">每週收盤價登錄</span>
+                                <div className="flex gap-4">
+                                  <input 
+                                    type="date" 
+                                    className="elegant-input flex-1"
+                                    value={formData.date} // reuse existing date state for now for simplicity, or add new
+                                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                  />
+                                  <input 
+                                    type="number" 
+                                    className="elegant-input flex-1"
+                                    placeholder="Price"
+                                    onChange={(e) => setFormData({...formData, unitPrice: Number(e.target.value)})}
+                                  />
+                                  <button 
+                                    className="bg-[var(--accent)] text-[var(--bg-primary)] px-4 py-2 rounded-lg font-bold"
+                                    onClick={() => {
+                                      setWeeklyPrices([...weeklyPrices, { date: formData.date, ticker: ticker, price: formData.unitPrice }]);
+                                    }}
+                                  >新增</button>
+                                </div>
+                                <div className="space-y-2 mt-4 max-h-40 overflow-y-auto">
+                                  {weeklyPrices.filter(wp => wp.ticker === ticker).map((wp, i) => (
+                                    <div key={i} className="flex justify-between items-center bg-white/5 p-2 rounded text-xs font-mono">
+                                      <span>{wp.date}</span>
+                                      <span className="font-bold text-[var(--accent)]">${wp.price}</span>
+                                      <button 
+                                        className="text-[var(--danger)]"
+                                        onClick={() => setWeeklyPrices(weeklyPrices.filter((_, idx) => idx !== i))}
+                                      >刪除</button>
+                                    </div>
+                                  ))}
                                 </div>
                              </div>
 
