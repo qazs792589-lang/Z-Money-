@@ -120,8 +120,9 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices }: { ticker: stri
   useEffect(() => {
     let active = true;
     const fetchChartData = async () => {
-      // 靜態環境下 (如 GitHub Pages)，不呼叫 API 避免 404 紅字報錯
-      if (window.location.hostname.endsWith('github.io')) {
+      // 判定是否為靜態部署環境 (GitHub Pages 等)
+      const isStatic = window.location.hostname.endsWith('github.io') || window.location.hostname.includes('github.io');
+      if (isStatic) {
         setLoading(false);
         return;
       }
@@ -313,15 +314,20 @@ export default function App() {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
+        const isStatic = window.location.hostname.endsWith('github.io') || window.location.hostname.includes('github.io');
+        // 在 GitHub Pages 上，BASE_URL 是包含子路徑的，例如 /Z-Money-/
+        // 我們直接抓取相對路徑的文件
         const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-        const response = await fetch(`${baseUrl}/stock_prices.json?t=${Date.now()}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const urlPath = isStatic ? `${baseUrl}/stock_prices.json` : `/stock_prices.json`;
+        
+        const response = await fetch(`${urlPath}?t=${Date.now()}`);
+        if (!response.ok) return;
         const data = await response.json();
         if (data && data.prices) {
           setMarketData(data);
         }
       } catch (e) {
-        // Silently skip if static price file is missing
+        // Silently skip
       }
     };
     fetchPrices();
@@ -330,8 +336,9 @@ export default function App() {
   // Fetch market prices from server (Fallback for local dev)
   useEffect(() => {
     const fetchPrices = async () => {
-      // 靜態環境下不嘗試 API 調用，避免紅字報錯
-      if (window.location.hostname.endsWith('github.io')) return;
+      const isStatic = window.location.hostname.endsWith('github.io') || window.location.hostname.includes('github.io');
+      if (isStatic) return;
+      
       if (marketData.prices && Object.keys(marketData.prices).length > 0) return;
       
       try {
@@ -341,7 +348,7 @@ export default function App() {
         const data = await res.json();
         setMarketData(data);
       } catch (err) {
-        // Silently fail as we have static fallback
+        // Silently skip
       }
     };
     fetchPrices();
