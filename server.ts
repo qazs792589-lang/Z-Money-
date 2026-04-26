@@ -3,6 +3,9 @@ import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
 import yahooFinance from 'yahoo-finance2';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 async function startServer() {
   const app = express();
@@ -58,31 +61,91 @@ async function startServer() {
   app.get("/api/chart/:ticker", async (req, res) => {
     try {
       const ticker = req.params.ticker;
-      const symbol = /^\d+$/.test(ticker) ? `${ticker}.TW` : ticker;
       
-      // 使用 yahoo-finance2 抓取歷史資料
-      const result = await yahooFinance.chart(symbol, {
-        period1: '2020-01-01', 
-        interval: '1d'
-      });
+      // 優先檢查是否有 Google Sheets URL
+      const googleSheetUrl = process.env.GOOGLE_SHEET_URL;
+      if (googleSheetUrl) {
+        console.log(`[API] Using Google Sheets for ${ticker}...`);
+        try {
+          const baseUrl = googleSheetUrl.includes('?') 
+            ? googleSheetUrl.split('?')[0] 
+            : googleSheetUrl;
+          const finalUrl = `${baseUrl}?ticker=${ticker}`;
+          
+          console.log(`[API] Final Request URL: ${finalUrl}`);
+          
+          const fetchRes = await fetch(finalUrl, {
+            redirect: 'follow'
+          });
+          
+          if (fetchRes.ok) {
+            const data = await fetchRes.json();
+            if (data && data.length > 0 && !data.error) {
+              console.log(`[API] Google Sheets Success: ${data.length} points`);
+              return res.json(data);
+            } else if (data.error) {
+              console.warn(`[API] Google Sheets returned error: ${data.error}`);
+            }
+          }
+        } catch (err: any) {
+          console.error("[API] Google Sheets failed, falling back to Yahoo:", err.message);
+        }
+      }
 
-      if (!result || !result.quotes) return res.json([]);
+      let symbol = /^\d+$/.test(ticker) ? `${ticker}.TW` : ticker;
+      console.log(`[API] Fetching ${ticker} as ${symbol} from Yahoo...`);
+      
+      const period1 = Math.floor(new Date('2023-01-01').getTime() / 1000);
+      const period2 = Math.floor(Date.now() / 1000);
+
+      let result;
+      try {
+        result = await yahooFinance.chart(symbol, {
+          period1,
+          period2,
+          interval: '1d'
+        });
+      } catch (e) {
+        if (symbol.endsWith('.TW')) {
+          symbol = symbol.replace('.TW', '.TWO');
+          console.log(`[API] Retrying with ${symbol}...`);
+          try {
+            result = await yahooFinance.chart(symbol, {
+              period1,
+              period2,
+              interval: '1d'
+            });
+          } catch (e2: any) {
+             console.error(`[API] Both .TW and .TWO failed: ${e2.message}`);
+             return res.json([]);
+          }
+        } else {
+          console.error(`[API] Error for ${symbol}:`, e);
+          return res.json([]);
+        }
+      }
+
+      if (!result || !result.quotes || result.quotes.length === 0) {
+        console.warn(`[API] No data found for ${symbol} within range.`);
+        return res.json([]);
+      }
 
       const chartData = result.quotes
-        .filter(q => q.close !== null && q.close !== undefined)
+        .filter(q => q.close !== null)
         .map(q => {
-          const date = new Date(q.date);
+          const d = new Date(q.date);
           return {
-            date: date.toISOString().split('T')[0],
-            timestamp: date.getTime(),
+            date: d.toISOString().split('T')[0],
+            timestamp: d.getTime(),
             price: Number(q.close!.toFixed(2))
           };
         });
       
+      console.log(`[API] Success: ${chartData.length} data points for ${ticker}`);
       res.json(chartData);
-    } catch (error) {
-      console.error("Error fetching historical data:", error);
-      res.status(500).json({ error: "Failed to fetch chart data" });
+    } catch (error: any) {
+      console.error("[API] Fatal Error:", error.message);
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -124,19 +124,24 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { 
       const isStatic = window.location.hostname.endsWith('github.io') || window.location.hostname.includes('github.io');
       if (isStatic) {
         setLoading(false);
-        return;
+        return;    // 改為純手動模式，不抓取外部資料
       }
 
       setLoading(true);
       try {
         const res = await fetch(`/api/chart/${ticker}`);
-        if (!res.ok) throw new Error('API not available');
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
         const data = await res.json();
+        console.log("Fetched Chart Data:", data);
         if (active) {
+          if (data.length === 0) {
+            console.warn("API returned empty data for ticker:", ticker);
+          }
           setChartData(data);
           setLoading(false);
         }
       } catch (err) {
+        console.error("Fetch Chart Error:", err);
         if (active) setLoading(false);
       }
     };
@@ -319,7 +324,7 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { 
 };
 
 export default function App() {
-  const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('C');
+  const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('B');
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [configs] = useState<Record<TransactionCategory, Config>>(DEFAULT_CONFIGS);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Defaulting to false for mobile friendliness
@@ -529,6 +534,38 @@ export default function App() {
   }, [appData.activeHoldings, marketData.prices]);
 
   // Dynamic Chart Data for Dashboard (Mock historical trend based on current stats)
+  const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
+  const [manualPrice, setManualPrice] = useState('');
+  
+  const addWeeklyPrice = (ticker: string) => {
+    if (!manualDate || !manualPrice) return;
+    
+    const newPriceEntry = {
+      date: manualDate,
+      price: parseFloat(manualPrice)
+    };
+
+    const updatedGroups = { ...appData.stockGroups };
+    if (!updatedGroups[ticker].weeklyPrices) {
+      updatedGroups[ticker].weeklyPrices = [];
+    }
+    
+    // 避免重複日期
+    updatedGroups[ticker].weeklyPrices = [
+      ...updatedGroups[ticker].weeklyPrices.filter(p => p.date !== manualDate),
+      newPriceEntry
+    ].sort((a, b) => a.date.localeCompare(b.date));
+
+    saveData({ ...appData, stockGroups: updatedGroups });
+    setManualPrice('');
+    // 立即更新圖表數據
+    setChartData(updatedGroups[ticker].weeklyPrices.map(p => ({
+      date: p.date,
+      timestamp: new Date(p.date).getTime(),
+      price: p.price
+    })));
+  };
+
   const chartData = useMemo(() => {
     const currentVal = stats.totalMarketValue || 1000000;
     const currentCost = stats.totalInvested || 900000;
@@ -642,7 +679,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar: Navigation Controller */}
         <aside className={cn(
-          "bg-[var(--bg-secondary)] border-r border-[var(--border)] p-6 flex flex-col gap-8 transition-all duration-300 z-30 fixed lg:relative h-full",
+          "bg-[var(--bg-secondary)] border-r border-[var(--border)] p-6 flex flex-col gap-8 transition-all duration-300 z-40 fixed top-16 left-0 h-[calc(100vh-64px)] overflow-y-auto shadow-2xl",
           isSidebarOpen ? "translate-x-0 w-[260px]" : "-translate-x-full lg:translate-x-0 lg:w-[80px] lg:px-4"
         )}>
           <div>
@@ -655,7 +692,7 @@ export default function App() {
             <nav className="flex flex-col gap-2">
               {[
                 { id: 'A', label: '交易/明細', icon: Plus, desc: 'Groups & Entry' },
-                { id: 'B', label: '庫存儀表板', icon: LayoutDashboard, desc: 'Portfolio' },
+                { id: 'B', label: '未實現損益', icon: LayoutDashboard, desc: 'Portfolio' },
                 { id: 'C', label: '已實現損益', icon: History, desc: 'History ROI' },
               ].map((nav) => (
                 <button
@@ -705,7 +742,10 @@ export default function App() {
           />
         )}
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-[var(--bg-primary)]">
+        <main className={cn(
+          "flex-1 overflow-y-auto p-4 md:p-8 bg-[var(--bg-primary)] transition-all duration-300",
+          isSidebarOpen ? "lg:ml-[260px]" : "lg:ml-[80px]"
+        )}>
           {activeView === 'A' && (
             <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
               <div>
@@ -1057,7 +1097,7 @@ export default function App() {
           {activeView === 'B' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
               <h2 className="text-2xl font-black flex items-center gap-3">
-                <LayoutDashboard className="text-[var(--accent)]" /> 庫存儀表板
+                <LayoutDashboard className="text-[var(--accent)]" /> 未實現損益 (Unrealized P/L)
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
