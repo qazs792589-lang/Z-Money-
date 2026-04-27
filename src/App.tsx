@@ -20,7 +20,8 @@ import {
   Calendar,
   Check,
   Target,
-  Edit2
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -156,6 +157,9 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { 
       price: wp.price
     })) : chartData;
 
+    // 強制按照時間排序，防止連線跳躍
+    dataToUse.sort((a, b) => a.timestamp - b.timestamp);
+
     // Fallback: If no history, see if we have a current static price
     const currentPrice = marketData.prices?.[ticker];
     if (dataToUse.length === 0 && currentPrice) {
@@ -194,6 +198,8 @@ const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { 
           const avgCost = currentShares > 0 ? totalInvested / currentShares : 0;
           currentShares -= tx.quantity;
           totalInvested -= (avgCost * tx.quantity);
+        } else if (tx.direction === 'DIVIDEND') {
+          totalInvested -= Math.abs(tx.totalAmount);
         }
         if (tx.date === pointDateStr) hasTxToday = true;
         txIndex++;
@@ -987,6 +993,71 @@ export default function App() {
                                 </div>
                               </div>
 
+                              {/* History Ledger Section */}
+                              <div className="flex flex-col border-b border-white/5 bg-[var(--bg-secondary)]">
+                                <div className="px-6 py-3 flex items-center justify-between bg-white/[0.02]">
+                                  <span className="text-[9px] font-black tracking-[0.2em] text-white/50 uppercase">歷史交易明細表</span>
+                                  <span className="text-[9px] font-mono text-[var(--text-dim)] border border-white/10 px-2 py-0.5 rounded italic opacity-50">{txs.length} 筆資料</span>
+                                </div>
+                                <div className="max-h-[300px] overflow-y-auto divide-y divide-white/5 custom-scrollbar">
+                                  {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                                    <div key={tx.id} className="px-6 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-colors group">
+                                      <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                                        <div className={cn(
+                                          "px-2.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0",
+                                          tx.direction === 'BUY' ? "bg-[var(--danger)]/10 text-[var(--danger)]" :
+                                            tx.direction === 'SELL' ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-orange-500/10 text-orange-500"
+                                        )}>
+                                          {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
+                                        </div>
+                                        <div className="truncate min-w-0 flex flex-col justify-center">
+                                          <p className="text-[9px] font-mono font-bold text-[var(--text-dim)] mb-0.5 opacity-60 flex items-center gap-2 leading-none">
+                                            {tx.date}
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <button
+                                                onClick={() => handleEditTx(tx)}
+                                                className="flex items-center text-[var(--accent)] hover:underline"
+                                                title="編輯此筆交易"
+                                              >
+                                                <Edit2 size={9} className="mr-0.5" /> 編輯
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  if (window.confirm('確定要刪除這筆交易紀錄嗎？')) {
+                                                    const updatedGroups = { ...appData.stockGroups };
+                                                    updatedGroups[ticker] = updatedGroups[ticker].filter(t => t.id !== tx.id);
+                                                    if (updatedGroups[ticker].length === 0) delete updatedGroups[ticker];
+                                                    saveData({ ...appData, stockGroups: updatedGroups });
+                                                  }
+                                                }}
+                                                className="flex items-center text-[var(--danger)] hover:underline"
+                                                title="刪除此筆交易"
+                                              >
+                                                <Trash2 size={9} className="mr-0.5" /> 刪除
+                                              </button>
+                                            </div>
+                                          </p>
+                                          <p className="text-[10px] md:text-xs text-white font-mono font-bold truncate leading-none mt-1">
+                                            <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString()} 股
+                                            <span className="mx-2 opacity-30">|</span>
+                                            <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="text-right shrink-0 flex flex-col justify-center">
+                                        <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 mb-0.5 leading-none">
+                                          交易總額
+                                        </p>
+                                        <p className={cn(
+                                          "text-sm md:text-base font-mono font-black leading-none mt-1",
+                                          tx.direction === 'BUY' ? "text-white" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
+                                        )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString()}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
                               {/* The Integrated Chart Area (Always bottom) */}
                               <div className="p-4 md:p-8 bg-black/20">
                                 <div className="h-[300px] md:h-[450px] rounded-xl overflow-hidden border border-white/5 relative group">
@@ -1002,79 +1073,57 @@ export default function App() {
                                 <input
                                   type="date"
                                   className="elegant-input flex-1"
-                                  value={formData.date} // reuse existing date state for now for simplicity, or add new
+                                  value={formData.date}
                                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                 />
                                 <input
                                   type="number"
                                   className="elegant-input flex-1"
                                   placeholder="Price"
+                                  value={formData.unitPrice || ''}
                                   onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
                                 />
                                 <button
                                   className="bg-[var(--accent)] text-[var(--bg-primary)] px-4 py-2 rounded-lg font-bold"
                                   onClick={() => {
-                                    setWeeklyPrices([...weeklyPrices, { date: formData.date, ticker: ticker, price: formData.unitPrice }]);
+                                     const others = weeklyPrices.filter(p => !(p.date === formData.date && p.ticker === ticker));
+                                     const newPrices = [...others, { date: formData.date, ticker, price: formData.unitPrice }]
+                                      .sort((a, b) => a.date.localeCompare(b.date));
+                                    setWeeklyPrices(newPrices);
                                   }}
                                 >新增</button>
                               </div>
                               <div className="space-y-2 mt-4 max-h-40 overflow-y-auto">
-                                {weeklyPrices.filter(wp => wp.ticker === ticker).map((wp, i) => (
-                                  <div key={i} className="flex justify-between items-center bg-white/5 p-2 rounded text-xs font-mono">
-                                    <span>{wp.date}</span>
-                                    <span className="font-bold text-[var(--accent)]">${wp.price}</span>
-                                    <button
-                                      className="text-[var(--danger)]"
-                                      onClick={() => setWeeklyPrices(weeklyPrices.filter((_, idx) => idx !== i))}
-                                    >刪除</button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* History Ledger Section */}
-                            <div className="flex flex-col">
-                              <div className="px-6 py-3 flex items-center justify-between bg-white/[0.02]">
-                                <span className="text-[9px] font-black tracking-[0.2em] text-white/50 uppercase">歷史交易明細表</span>
-                                <span className="text-[9px] font-mono text-[var(--text-dim)] border border-white/10 px-2 py-0.5 rounded italic opacity-50">{txs.length} 筆資料</span>
-                              </div>
-                              <div className="max-h-[500px] overflow-y-auto divide-y divide-white/5 custom-scrollbar">
-                                {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
-                                  <div key={tx.id} className="px-6 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-colors group">
-                                    <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                                      <div className={cn(
-                                        "px-2.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0",
-                                        tx.direction === 'BUY' ? "bg-[var(--danger)]/10 text-[var(--danger)]" :
-                                          tx.direction === 'SELL' ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-orange-500/10 text-orange-500"
-                                      )}>
-                                        {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
-                                      </div>
-                                      <div className="truncate min-w-0 flex flex-col justify-center">
-                                        <p className="text-[9px] font-mono font-bold text-[var(--text-dim)] mb-0.5 opacity-60 flex items-center gap-2 leading-none">
-                                          {tx.date}
-                                          <button
-                                            onClick={() => handleEditTx(tx)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center text-[var(--accent)] hover:underline"
-                                            title="編輯此筆交易"
-                                          >
-                                            <Edit2 size={9} className="mr-0.5" /> 編輯
-                                          </button>
-                                        </p>
-                                        <p className="text-[10px] md:text-xs text-white font-mono font-bold truncate leading-none mt-1">
-                                          <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString()} 股
-                                          <span className="mx-2 opacity-30">|</span>
-                                          <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString()}
-                                        </p>
-                                      </div>
+                                {weeklyPrices.filter(wp => wp.ticker === ticker)
+                                  .sort((a, b) => b.date.localeCompare(a.date)) // 顯示：最新在上面
+                                  .map((wp, i) => (
+                                  <div key={i} className="flex justify-between items-center bg-white/5 p-2 rounded text-xs font-mono group hover:bg-white/10 transition-colors">
+                                    <div className="flex gap-4 items-center">
+                                      <span className="opacity-50">{wp.date}</span>
+                                      <span className="font-bold text-[var(--accent)]">${wp.price}</span>
                                     </div>
-                                    <div className="text-right shrink-0 flex flex-col justify-center">
-                                      <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 mb-0.5 leading-none">
-                                        交易總額
-                                      </p>
-                                      <p className={cn(
-                                        "text-sm md:text-base font-mono font-black leading-none mt-1",
-                                        tx.direction === 'BUY' ? "text-white" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
-                                      )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString()}</p>
+                                    <div className="flex items-center gap-3">
+                                      <button
+                                        className="text-[var(--accent)] hover:underline flex items-center gap-1 text-[10px]"
+                                        onClick={() => {
+                                          setFormData({ ...formData, date: wp.date, unitPrice: wp.price });
+                                          // 尋找「每週收盤價登錄」這幾個字所在的區塊並捲動過去
+                                          const entryHeader = Array.from(document.querySelectorAll('span')).find(el => el.textContent === '每週收盤價登錄');
+                                          entryHeader?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }}
+                                      >
+                                        <Edit2 size={10} /> 編輯
+                                      </button>
+                                      <button
+                                        className="text-[var(--danger)] hover:underline flex items-center gap-1 text-[10px]"
+                                        onClick={() => {
+                                          if (window.confirm('確定要刪除這筆收盤價紀錄嗎？')) {
+                                            setWeeklyPrices(weeklyPrices.filter(item => !(item.date === wp.date && item.ticker === wp.ticker)));
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 size={10} /> 刪除
+                                      </button>
                                     </div>
                                   </div>
                                 ))}
