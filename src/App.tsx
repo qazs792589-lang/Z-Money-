@@ -205,29 +205,26 @@ export default function App() {
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="flex items-center gap-2">
-            <img
-              src="/Z-Money-/logo.png"
-              alt="Z-Ledger Logo"
-              className={cn(
-                "h-8 md:h-10 object-contain rounded-md transition-all duration-300",
-                (theme === 'light' || theme === 'zen') ? "shadow-none" : "shadow-[0_0_20px_var(--accent-glow)]"
-              )}
-              style={ (theme === 'light' || theme === 'zen') ? { filter: 'invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.2)', mixBlendMode: 'darken' } : {} }
-            />
-            <span className="text-[var(--text-main)] font-bold text-xs md:text-base uppercase tracking-widest hidden xs:inline-block ml-2">投資管理系統</span>
-          </h1>
-          <button
+          <button 
             onClick={() => {
               setTheme(t => {
                 const currentIndex = themes.indexOf(t as any);
                 return themes[(currentIndex + 1) % themes.length];
               });
             }}
-            className="p-1.5 ml-2 hover:bg-[rgba(255,255,255,0.05)] rounded-lg text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors"
-            title="切換主題風格"
+            className="flex items-center gap-2 hover:opacity-80 active:scale-95 transition-all group"
+            title="點擊圖示切換主題風格"
           >
-            <Palette size={18} />
+            <img
+              src="/Z-Money-/logo.png"
+              alt="Z-Ledger Logo"
+              className={cn(
+                "h-10 md:h-12 object-contain rounded-md transition-all duration-300",
+                (theme === 'light' || theme === 'zen') ? "shadow-none" : "shadow-[0_0_25px_var(--accent-glow)]"
+              )}
+              style={ (theme === 'light' || theme === 'zen') ? { filter: 'invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.2)', mixBlendMode: 'darken' } : {} }
+            />
+            <span className="text-[var(--text-main)] font-bold text-xs md:text-base uppercase tracking-widest hidden xs:inline-block ml-1 group-hover:text-[var(--accent)] transition-colors">投資管理系統</span>
           </button>
         </div>
         <div className="flex items-center gap-3 md:gap-6">
