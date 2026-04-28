@@ -205,7 +205,7 @@ export default function App() {
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <button 
+          <button
             onClick={() => {
               setTheme(t => {
                 const currentIndex = themes.indexOf(t as any);
@@ -222,7 +222,7 @@ export default function App() {
                 "h-10 md:h-12 object-contain rounded-md transition-all duration-300",
                 (theme === 'light' || theme === 'zen') ? "shadow-none" : "shadow-[0_0_25px_var(--accent-glow)]"
               )}
-              style={ (theme === 'light' || theme === 'zen') ? { filter: 'invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.2)', mixBlendMode: 'darken' } : {} }
+              style={(theme === 'light' || theme === 'zen') ? { filter: 'invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.2)', mixBlendMode: 'darken' } : {}}
             />
             <span className="text-[var(--text-main)] font-bold text-xs md:text-base uppercase tracking-widest hidden xs:inline-block ml-1 group-hover:text-[var(--accent)] transition-colors">投資管理系統</span>
           </button>
