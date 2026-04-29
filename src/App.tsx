@@ -491,8 +491,8 @@ export default function App() {
                       onClick={() => setIsEditingTickers(!isEditingTickers)}
                       className={cn(
                         "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
-                        isEditingTickers 
-                          ? "bg-[var(--success)] text-white border-[var(--success)]" 
+                        isEditingTickers
+                          ? "bg-[var(--success)] text-white border-[var(--success)]"
                           : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:text-[var(--text-main)]"
                       )}
                     >
@@ -501,12 +501,20 @@ export default function App() {
                   </div>
 
                   {/* Modern Pill Ticker Navigation */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none smooth-scroll-x">
                     {(() => {
                       const allTickers = Object.keys(appData.stockGroups);
+
+                      // Split into active and zero-share
+                      const activeTickers = allTickers.filter(t => (appData.holdingsMap[t]?.currentShares || 0) > 0);
+                      const zeroTickers = allTickers.filter(t => (appData.holdingsMap[t]?.currentShares || 0) <= 0);
+
+                      // Final sorting: Custom Order -> Active (Sorted) -> Zero (Sorted)
                       const currentOrder = tickerOrder.filter(t => allTickers.includes(t));
-                      const remainingTickers = allTickers.filter(t => !tickerOrder.includes(t)).sort();
-                      const sortedTickers = [...currentOrder, ...remainingTickers];
+                      const unorganizedActive = activeTickers.filter(t => !tickerOrder.includes(t)).sort();
+                      const unorganizedZero = zeroTickers.filter(t => !tickerOrder.includes(t)).sort();
+
+                      const sortedTickers = [...currentOrder, ...unorganizedActive, ...unorganizedZero];
 
                       if (isEditingTickers) {
                         return (
@@ -515,23 +523,38 @@ export default function App() {
                             values={sortedTickers}
                             onReorder={setTickerOrder}
                             className="flex items-center gap-2"
+                            style={{ touchAction: 'pan-y' }}
                           >
-                            {sortedTickers.map(ticker => (
-                              <Reorder.Item
-                                key={ticker}
-                                value={ticker}
-                                whileDrag={{ 
-                                  scale: 1.1, 
-                                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
-                                  zIndex: 50
-                                }}
-                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                className="px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap bg-[var(--accent)] text-[var(--bg-primary)] cursor-grab active:cursor-grabbing border border-[var(--accent)] shadow-sm flex items-center gap-2"
-                              >
-                                <span className="opacity-60 text-[10px]">⠿</span>
-                                {appData.stockGroups[ticker]?.[0]?.name || ticker}
-                              </Reorder.Item>
-                            ))}
+                            {sortedTickers.map(ticker => {
+                              const isZero = (appData.holdingsMap[ticker]?.currentShares || 0) <= 0;
+                              return (
+                                <Reorder.Item
+                                  key={ticker}
+                                  value={ticker}
+                                  whileDrag={{
+                                    scale: 1.05,
+                                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+                                    zIndex: 50
+                                  }}
+                                  transition={{ type: "spring", stiffness: 600, damping: 40 }}
+                                  className={cn(
+                                    "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap cursor-grab active:cursor-grabbing border shadow-sm flex items-center gap-2 transition-opacity hardware-accel no-select",
+                                    isZero ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-60" : "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)]"
+                                  )}
+                                  style={{ touchAction: 'pan-y' }}
+                                >
+                                  <span className="opacity-60 text-[10px]">⠿</span>
+                                  {appData.stockGroups[ticker]?.[0]?.name || ticker}
+                                  <button
+                                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking X
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteHolding(ticker); }}
+                                    className="ml-1 p-0.5 hover:bg-black/20 rounded-full transition-colors"
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                </Reorder.Item>
+                              );
+                            })}
                           </Reorder.Group>
                         );
                       }
@@ -541,19 +564,24 @@ export default function App() {
                           {sortedTickers.map(ticker => {
                             const groupTxs = appData.stockGroups[ticker] || [];
                             const stockName = groupTxs.length > 0 ? groupTxs[0].name : ticker;
+                            const isZero = (appData.holdingsMap[ticker]?.currentShares || 0) <= 0;
 
                             return (
                               <button
                                 key={ticker}
                                 onClick={() => setSelectedTicker(ticker)}
                                 className={cn(
-                                  "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all border shrink-0",
+                                  "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all border shrink-0 hardware-accel",
                                   selectedTicker === ticker
                                     ? "bg-[var(--text-main)] text-[var(--bg-primary)] border-[var(--text-main)] shadow-lg shadow-[var(--accent-glow)] active:scale-[0.98]"
-                                    : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-main)]"
+                                    : cn(
+                                      "bg-[var(--bg-secondary)] border-[var(--border)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-main)]",
+                                      isZero ? "text-[var(--text-dim)]/50 border-dashed" : "text-[var(--text-dim)]"
+                                    )
                                 )}
                               >
                                 {stockName}
+                                {isZero && <span className="ml-1 opacity-40 text-[9px]">(已清倉)</span>}
                               </button>
                             );
                           })}
@@ -649,13 +677,15 @@ export default function App() {
                                         <motion.div
                                           drag="x"
                                           dragConstraints={{ left: 0, right: 0 }}
-                                          dragElastic={0.6}
+                                          dragElastic={0.4}
+                                          dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
                                           onDragEnd={(_, info) => {
                                             if (Math.abs(info.offset.x) > 80) {
                                               handleDeleteTransaction(tx.id);
                                             }
                                           }}
-                                          className="relative bg-[var(--bg-secondary)] px-6 py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing"
+                                          className="relative bg-[var(--bg-secondary)] px-6 py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select"
+                                          style={{ touchAction: 'pan-y' }}
                                         >
                                           <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                                             <div className={cn(

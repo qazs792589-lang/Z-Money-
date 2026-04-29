@@ -119,3 +119,21 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
 }
+
+/* Mobile Smoothness Utilities */
+.smooth-scroll-x {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.hardware-accel {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}

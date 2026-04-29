@@ -21,7 +21,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList }) => {
             篩選：僅顯示已實現
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto smooth-scroll-x">
           <table className="w-full text-left">
             <thead>
               <tr className="text-[10px] text-[var(--text-main)] font-bold uppercase tracking-wider bg-[var(--bg-tertiary)]">
