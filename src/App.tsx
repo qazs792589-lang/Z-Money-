@@ -39,7 +39,7 @@ import {
   ReferenceDot,
   Legend
 } from 'recharts';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { cn } from './lib/utils';
 import {
   Transaction,
@@ -78,6 +78,8 @@ export default function App() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>([]);
+  const [tickerOrder, setTickerOrder] = useState<string[]>([]);
+  const [isEditingTickers, setIsEditingTickers] = useState(false);
 
 
   // Derived Calculations & Logic extracted to custom hooks
@@ -107,14 +109,23 @@ export default function App() {
       newPriceEntry
     ].sort((a, b) => a.date.localeCompare(b.date));
 
-    saveData({ ...appData, stockGroups: updatedGroups });
+    // saveData({ ...appData, stockGroups: updatedGroups });
     setManualPrice('');
-    // 立即更新圖表數據
-    setChartData(updatedGroups[ticker].weeklyPrices.map(p => ({
-      date: p.date,
-      timestamp: new Date(p.date).getTime(),
-      price: p.price
-    })));
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (window.confirm('確定要刪除這筆交易紀錄嗎？')) {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
+  const handleDeleteHolding = (ticker: string) => {
+    const stockName = appData.stockGroups[ticker]?.transactions?.[0]?.name || ticker;
+    if (window.confirm(`確定要刪除 ${stockName} (${ticker}) 的所有交易紀錄與持倉嗎？`)) {
+      setTransactions(prev => prev.filter(t => t.ticker !== ticker));
+      setWeeklyPrices(prev => prev.filter(wp => wp.ticker !== ticker));
+      if (selectedTicker === ticker) setSelectedTicker(null);
+    }
   };
 
   const chartData = useMemo(() => {
@@ -467,36 +478,88 @@ export default function App() {
 
               <div className="space-y-6">
                 <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] text-[var(--accent)]">
-                      <Briefcase size={18} />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] text-[var(--accent)]">
+                        <Briefcase size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black text-[var(--text-main)] leading-tight">投資組合明細</h4>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-lg font-black text-[var(--text-main)] leading-tight">投資組合明細</h4>
-                    </div>
+                    <button
+                      onClick={() => setIsEditingTickers(!isEditingTickers)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
+                        isEditingTickers 
+                          ? "bg-[var(--success)] text-white border-[var(--success)]" 
+                          : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:text-[var(--text-main)]"
+                      )}
+                    >
+                      {isEditingTickers ? <><Check size={12} /> 完成排序</> : <><Palette size={12} /> 編輯順序</>}
+                    </button>
                   </div>
 
                   {/* Modern Pill Ticker Navigation */}
                   <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                    {Object.keys(appData.stockGroups).sort().map(ticker => {
-                      const groupTxs = appData.stockGroups[ticker];
-                      const stockName = groupTxs.length > 0 ? groupTxs[0].name : ticker;
+                    {(() => {
+                      const allTickers = Object.keys(appData.stockGroups);
+                      const currentOrder = tickerOrder.filter(t => allTickers.includes(t));
+                      const remainingTickers = allTickers.filter(t => !tickerOrder.includes(t)).sort();
+                      const sortedTickers = [...currentOrder, ...remainingTickers];
+
+                      if (isEditingTickers) {
+                        return (
+                          <Reorder.Group
+                            axis="x"
+                            values={sortedTickers}
+                            onReorder={setTickerOrder}
+                            className="flex items-center gap-2"
+                          >
+                            {sortedTickers.map(ticker => (
+                              <Reorder.Item
+                                key={ticker}
+                                value={ticker}
+                                whileDrag={{ 
+                                  scale: 1.1, 
+                                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+                                  zIndex: 50
+                                }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                className="px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap bg-[var(--accent)] text-[var(--bg-primary)] cursor-grab active:cursor-grabbing border border-[var(--accent)] shadow-sm flex items-center gap-2"
+                              >
+                                <span className="opacity-60 text-[10px]">⠿</span>
+                                {appData.stockGroups[ticker]?.[0]?.name || ticker}
+                              </Reorder.Item>
+                            ))}
+                          </Reorder.Group>
+                        );
+                      }
 
                       return (
-                        <button
-                          key={ticker}
-                          onClick={() => setSelectedTicker(ticker)}
-                          className={cn(
-                            "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all border shrink-0",
-                            selectedTicker === ticker
-                              ? "bg-[var(--text-main)] text-[var(--bg-primary)] border-[var(--text-main)] shadow-lg shadow-[var(--accent-glow)] active:scale-[0.98]"
-                              : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-main)]"
-                          )}
-                        >
-                          {stockName}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {sortedTickers.map(ticker => {
+                            const groupTxs = appData.stockGroups[ticker] || [];
+                            const stockName = groupTxs.length > 0 ? groupTxs[0].name : ticker;
+
+                            return (
+                              <button
+                                key={ticker}
+                                onClick={() => setSelectedTicker(ticker)}
+                                className={cn(
+                                  "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all border shrink-0",
+                                  selectedTicker === ticker
+                                    ? "bg-[var(--text-main)] text-[var(--bg-primary)] border-[var(--text-main)] shadow-lg shadow-[var(--accent-glow)] active:scale-[0.98]"
+                                    : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-main)]"
+                                )}
+                              >
+                                {stockName}
+                              </button>
+                            );
+                          })}
+                        </div>
                       );
-                    })}
+                    })()}
                   </div>
                 </div>
 
@@ -504,23 +567,21 @@ export default function App() {
                   {(selectedTicker || Object.keys(appData.stockGroups)[0]) ? (
                     (() => {
                       const ticker = selectedTicker || Object.keys(appData.stockGroups).sort()[0];
-                      const txs = appData.stockGroups[ticker];
-                      const h = appData.holdingsMap[ticker] || { currentShares: 0, avgCost: 0, totalInvested: 0 };
+                      const txs = appData.stockGroups[ticker] || [];
+                      const h = appData.holdingsMap[ticker] || { name: ticker, currentShares: 0, avgCost: 0, totalInvested: 0 };
                       const curPrice = marketData.prices[ticker] || h.avgCost;
                       const unrealizedPL = (curPrice - h.avgCost) * h.currentShares;
                       const roi = h.avgCost > 0 ? ((curPrice / h.avgCost) - 1) * 100 : 0;
+                      const displayName = txs.length > 0 ? txs[0].name : h.name;
 
                       return (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <div className="elegant-card bg-[var(--bg-secondary)] overflow-hidden p-0 border-[var(--border)] shadow-2xl space-y-px">
-                            {/* Stock Header & Primary Stat */}
-                            {/* Stock Header & Live Chart Area */}
                             <div className="flex flex-col bg-[var(--bg-tertiary)] border-b border-[var(--border)]">
-                              {/* Unified Header & Stats Block */}
                               <div className="p-4 md:p-8 bg-[var(--bg-secondary)] flex flex-col justify-center">
                                 <div className="flex flex-row items-end justify-between gap-2 md:gap-6 mb-4 md:mb-6">
                                   <div className="flex flex-col min-w-0 flex-shrink">
-                                    <h5 className="text-xl md:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tighter mb-1 md:mb-2 truncate">{txs[0].name}</h5>
+                                    <h5 className="text-xl md:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tighter mb-1 md:mb-2 truncate">{displayName}</h5>
                                     <div className="flex items-center gap-1 md:gap-2">
                                       <span className="px-1.5 py-0.5 md:px-2 md:py-1 bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent)] rounded text-[9px] md:text-xs font-mono font-bold tracking-widest leading-none">{ticker}</span>
                                     </div>
@@ -561,62 +622,89 @@ export default function App() {
                                   <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">歷史交易明細表</span>
                                   <span className="text-[9px] font-mono text-[var(--text-dim)] border border-[var(--border)] px-2 py-0.5 rounded italic opacity-50">{txs.length} 筆資料</span>
                                 </div>
-                                <div className="max-h-[300px] overflow-y-auto divide-y divide-[var(--border)] custom-scrollbar">
-                                  {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
-                                    <div key={tx.id} className="px-6 py-3 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors group">
-                                      <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                                        <div className={cn(
-                                          "px-2.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0",
-                                          tx.direction === 'BUY' ? "bg-[var(--danger)]/10 text-[var(--danger)]" :
-                                            tx.direction === 'SELL' ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-orange-500/10 text-orange-500"
-                                        )}>
-                                          {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
+                                <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                                  <AnimatePresence initial={false}>
+                                    {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                                      <motion.div
+                                        key={tx.id}
+                                        layout
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        className="relative overflow-hidden border-b border-[var(--border)] group"
+                                      >
+                                        {/* Swipe-to-Delete Background */}
+                                        <div className="absolute inset-0 bg-[var(--danger)] flex items-center justify-between px-6">
+                                          <div className="flex items-center gap-2 text-white">
+                                            <Trash2 size={16} />
+                                            <span className="text-[8px] font-black uppercase tracking-widest">Delete</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-white">
+                                            <span className="text-[8px] font-black uppercase tracking-widest">Delete</span>
+                                            <Trash2 size={16} />
+                                          </div>
                                         </div>
-                                        <div className="truncate min-w-0 flex flex-col justify-center">
-                                          <p className="text-[9px] font-mono font-bold text-[var(--text-dim)] mb-0.5 opacity-60 flex items-center gap-2 leading-none">
-                                            {tx.date}
-                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <button
-                                                onClick={() => handleEditTx(tx)}
-                                                className="flex items-center text-[var(--accent)] hover:underline"
-                                                title="編輯此筆交易"
-                                              >
-                                                <Edit2 size={9} className="mr-0.5" /> 編輯
-                                              </button>
-                                              <button
-                                                onClick={() => {
-                                                  if (window.confirm('確定要刪除這筆交易紀錄嗎？')) {
-                                                    const updatedGroups = { ...appData.stockGroups };
-                                                    updatedGroups[ticker] = updatedGroups[ticker].filter(t => t.id !== tx.id);
-                                                    if (updatedGroups[ticker].length === 0) delete updatedGroups[ticker];
-                                                    saveData({ ...appData, stockGroups: updatedGroups });
-                                                  }
-                                                }}
-                                                className="flex items-center text-[var(--danger)] hover:underline"
-                                                title="刪除此筆交易"
-                                              >
-                                                <Trash2 size={9} className="mr-0.5" /> 刪除
-                                              </button>
+
+                                        {/* Foreground Content */}
+                                        <motion.div
+                                          drag="x"
+                                          dragConstraints={{ left: 0, right: 0 }}
+                                          dragElastic={0.6}
+                                          onDragEnd={(_, info) => {
+                                            if (Math.abs(info.offset.x) > 80) {
+                                              handleDeleteTransaction(tx.id);
+                                            }
+                                          }}
+                                          className="relative bg-[var(--bg-secondary)] px-6 py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing"
+                                        >
+                                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                                            <div className={cn(
+                                              "px-2 py-0.5 rounded text-[8px] font-bold uppercase shrink-0",
+                                              tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
+                                                tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-orange-500/20 text-orange-500"
+                                            )}>
+                                              {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
                                             </div>
-                                          </p>
-                                          <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold truncate leading-none mt-1">
-                                            <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString()} 股
-                                            <span className="mx-2 opacity-30">|</span>
-                                            <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString()}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <div className="text-right shrink-0 flex flex-col justify-center">
-                                        <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 mb-0.5 leading-none">
-                                          交易總額
-                                        </p>
-                                        <p className={cn(
-                                          "text-sm md:text-base font-mono font-black leading-none mt-1",
-                                          tx.direction === 'BUY' ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
-                                        )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString()}</p>
-                                      </div>
-                                    </div>
-                                  ))}
+                                            <div className="truncate min-w-0 flex flex-col justify-center">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[9px] font-mono font-bold text-[var(--text-dim)] opacity-60 leading-none">{tx.date}</span>
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); handleEditTx(tx); }}
+                                                    className="p-1.5 text-[var(--accent)] hover:bg-[var(--bg-primary)] rounded transition-all"
+                                                    title="編輯此筆交易"
+                                                  >
+                                                    <Edit2 size={10} />
+                                                  </button>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx.id); }}
+                                                    className="p-1.5 text-[var(--danger)] hover:bg-[var(--bg-primary)] rounded transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
+                                                    title="刪除此筆交易"
+                                                  >
+                                                    <Trash2 size={10} />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold truncate leading-none">
+                                                <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString()} 股
+                                                <span className="mx-2 opacity-30">|</span>
+                                                <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="text-right shrink-0 flex flex-col justify-center ml-4">
+                                            <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 mb-0.5 leading-none">
+                                              交易總額
+                                            </p>
+                                            <p className={cn(
+                                              "text-sm md:text-base font-mono font-black leading-none mt-1",
+                                              tx.direction === 'BUY' ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
+                                            )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString()}</p>
+                                          </div>
+                                        </motion.div>
+                                      </motion.div>
+                                    ))}
+                                  </AnimatePresence>
                                 </div>
                               </div>
 
