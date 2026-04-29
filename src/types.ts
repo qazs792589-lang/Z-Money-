@@ -30,6 +30,7 @@ export interface Holding {
   currentShares: number;
   avgCost: number;
   totalInvested: number;
+  realizedPL: number;
 }
 
 export interface RealizedProfit {

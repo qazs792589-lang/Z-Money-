@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Plus,
   History,
@@ -22,8 +22,16 @@ import {
   Target,
   Edit2,
   Trash2,
-  Palette
+  Palette,
+  FileUp
 } from 'lucide-react';
+
+declare global {
+  interface Window {
+    XLSX: any;
+  }
+}
+const XLSX = (window as any).XLSX;
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -80,11 +88,61 @@ export default function App() {
   const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>([]);
   const [tickerOrder, setTickerOrder] = useState<string[]>([]);
   const [isEditingTickers, setIsEditingTickers] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const weeklyFileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleWeeklyCsvImport = (e: React.ChangeEvent<HTMLInputElement>, ticker: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/);
+        if (lines.length < 2) return;
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        const dateIdx = headers.findIndex(h => h === '日期' || h.toLowerCase() === 'date');
+        const priceIdx = headers.findIndex(h => h === '收盤價' || h.toLowerCase() === 'price' || h.toLowerCase().includes('closing'));
+
+        if (dateIdx === -1 || priceIdx === -1) {
+          alert('CSV 格式錯誤，必須包含「日期」與「收盤價」欄位。');
+          return;
+        }
+
+        const newEntries: WeeklyPrice[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim());
+          if (cols.length <= Math.max(dateIdx, priceIdx)) continue;
+
+          const date = cols[dateIdx];
+          const price = parseFloat(cols[priceIdx]);
+
+          if (date && !isNaN(price)) {
+            newEntries.push({ date, ticker, price });
+          }
+        }
+
+        if (newEntries.length > 0) {
+          setWeeklyPrices(prev => {
+            const others = prev.filter(p => p.ticker !== ticker || !newEntries.some(ne => ne.date === p.date));
+            return [...others, ...newEntries].sort((a, b) => a.date.localeCompare(b.date));
+          });
+          alert(`成功匯入 ${newEntries.length} 筆收盤價紀錄！`);
+        }
+      } catch (err) {
+        console.error('CSV Import error:', err);
+        alert('CSV 讀取失敗。');
+      }
+      if (weeklyFileInputRef.current) weeklyFileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
 
   // Derived Calculations & Logic extracted to custom hooks
   const { formData, setFormData, preview } = useTransactionForm(configs);
-  const { appData, stats } = usePortfolioCalculations(transactions, marketData);
+  const { appData, stats } = usePortfolioCalculations(transactions, marketData, weeklyPrices);
 
   // Dynamic Chart Data for Dashboard (Mock historical trend based on current stats)
   const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
@@ -129,27 +187,62 @@ export default function App() {
   };
 
   const chartData = useMemo(() => {
-    const currentVal = stats.totalMarketValue || 1000000;
-    const currentCost = stats.totalInvested || 900000;
-    const currentProfit = stats.unrealizedPL || 100000;
+    // 1. Get a unique sorted timeline from both weekly prices AND transactions
+    const allDates = new Set<string>();
+    weeklyPrices.forEach(wp => allDates.add(wp.date));
+    transactions.forEach(tx => allDates.add(tx.date));
+    
+    const timeline = Array.from(allDates).sort();
+    if (timeline.length === 0) return [];
 
-    const data = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (i * 7));
-      const dateStr = d.toISOString().split('T')[0];
-      const factor = 1 - (i * 0.02) + (Math.random() * 0.04 - 0.02);
-      const costFactor = 1 - (i * 0.01);
-      data.push({
-        name: dateStr,
-        value: i === 0 ? currentVal : Math.floor(currentVal * factor),
-        cost: i === 0 ? currentCost : Math.floor(currentCost * costFactor),
-        profit: i === 0 ? currentProfit : (Math.floor(currentVal * factor) - Math.floor(currentCost * costFactor))
+    // 2. For each point in the timeline, calculate portfolio status
+    return timeline.map(date => {
+      let totalValue = 0;
+      let totalCost = 0;
+
+      // Group transactions by ticker for easier processing
+      const tickers = Object.keys(appData.stockGroups);
+      
+      tickers.forEach(ticker => {
+        const txs = appData.stockGroups[ticker] || [];
+        const pastTxs = txs.filter(t => t.date <= date);
+        
+        let shares = 0;
+        let cost = 0;
+        
+        pastTxs.forEach(t => {
+          if (t.direction === 'BUY') {
+            shares += t.quantity;
+            cost += t.totalAmount;
+          } else if (t.direction === 'SELL') {
+            const currentAvg = shares > 0 ? cost / shares : 0;
+            shares -= t.quantity;
+            cost -= (currentAvg * t.quantity);
+          } else if (t.direction === 'DIVIDEND') {
+            cost -= t.totalAmount;
+          }
+        });
+
+        if (shares > 0) {
+          // Find the price for this ticker on or before this date
+          const priceEntry = weeklyPrices
+            .filter(wp => wp.ticker === ticker && wp.date <= date)
+            .sort((a, b) => b.date.localeCompare(a.date))[0];
+          
+          const price = priceEntry ? priceEntry.price : (pastTxs[0]?.unitPrice || 0);
+          totalValue += shares * price;
+          totalCost += cost;
+        }
       });
-    }
-    return data;
-  }, [stats]);
+
+      return {
+        name: date,
+        value: Math.floor(totalValue),
+        cost: Math.floor(totalCost),
+        profit: Math.floor(totalValue - totalCost)
+      };
+    });
+  }, [appData.stockGroups, weeklyPrices]);
 
   const handleAddTransaction = () => {
     if (!formData.ticker || formData.unitPrice < 0 || formData.quantity <= 0) return;
@@ -596,10 +689,17 @@ export default function App() {
                     (() => {
                       const ticker = selectedTicker || Object.keys(appData.stockGroups).sort()[0];
                       const txs = appData.stockGroups[ticker] || [];
-                      const h = appData.holdingsMap[ticker] || { name: ticker, currentShares: 0, avgCost: 0, totalInvested: 0 };
-                      const curPrice = marketData.prices[ticker] || h.avgCost;
+                      const h = appData.holdingsMap[ticker] || { name: ticker, currentShares: 0, avgCost: 0, totalInvested: 0, realizedPL: 0 };
+                      const latestWeekly = weeklyPrices.filter(wp => wp.ticker === ticker).sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
+                      const curPrice = marketData.prices[ticker] || latestWeekly || h.avgCost;
                       const unrealizedPL = (curPrice - h.avgCost) * h.currentShares;
-                      const roi = h.avgCost > 0 ? ((curPrice / h.avgCost) - 1) * 100 : 0;
+                      const totalPL = unrealizedPL + (h.realizedPL || 0);
+                      
+                      // Calculate ROI: If active, use unrealized ROI. If closed, use realized profit vs total historically invested (approx)
+                      // For simplicity, let's show the ROI based on active avgCost if available, otherwise just total profit.
+                      const roi = h.avgCost > 0 
+                        ? ((curPrice / h.avgCost) - 1) * 100 
+                        : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0); // Placeholder for closed positions
                       const displayName = txs.length > 0 ? txs[0].name : h.name;
 
                       return (
@@ -617,8 +717,8 @@ export default function App() {
 
                                   <div className="text-right flex-shrink-0 mt-2 md:mt-0">
                                     <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString()}</p>
-                                    <p className={cn("text-[10px] md:text-xs font-bold font-mono", unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                      {unrealizedPL >= 0 ? '▲' : '▼'} ${(Math.abs(unrealizedPL)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({roi.toFixed(1)}%)
+                                    <p className={cn("text-[10px] md:text-xs font-bold font-mono", totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                                      {totalPL >= 0 ? '▲' : '▼'} ${(Math.abs(totalPL)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({roi.toFixed(1)}%)
                                     </p>
                                   </div>
                                 </div>
@@ -748,7 +848,24 @@ export default function App() {
 
                             {/* Weekly Price Input Section */}
                             <div className="bg-[var(--bg-tertiary)] p-6 border-b border-[var(--border)] space-y-4">
-                              <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
+                               <div className="flex items-center justify-between">
+                                 <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
+                                 <div className="flex gap-2">
+                                   <input
+                                     type="file"
+                                     ref={weeklyFileInputRef}
+                                     onChange={(e) => handleWeeklyCsvImport(e, ticker)}
+                                     accept=".csv"
+                                     className="hidden"
+                                   />
+                                   <button
+                                     onClick={() => weeklyFileInputRef.current?.click()}
+                                     className="flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border)] text-[8px] font-bold text-[var(--text-dim)] hover:text-[var(--text-main)] transition-all uppercase tracking-widest"
+                                   >
+                                     <FileUp size={10} /> 匯入 CSV
+                                   </button>
+                                 </div>
+                               </div>
                               <div className="flex gap-4">
                                 <input
                                   type="date"
@@ -775,38 +892,76 @@ export default function App() {
                               </div>
                               <div className="space-y-2 mt-4 max-h-40 overflow-y-auto">
                                 {weeklyPrices.filter(wp => wp.ticker === ticker)
-                                  .sort((a, b) => b.date.localeCompare(a.date)) // 顯示：最新在上面
-                                  .map((wp, i) => (
-                                    <div key={i} className="flex justify-between items-center bg-[var(--bg-primary)] border border-[var(--border)] p-2 rounded text-xs font-mono group hover:bg-[var(--bg-secondary)] transition-colors">
-                                      <div className="flex gap-4 items-center">
-                                        <span className="opacity-50">{wp.date}</span>
-                                        <span className="font-bold text-[var(--accent)]">${wp.price}</span>
+                                  .sort((a, b) => b.date.localeCompare(a.date))
+                                  .map((wp, i) => {
+                                    // Calculate shares and cost at this specific date
+                                    const pastTxs = txs.filter(t => t.date <= wp.date);
+                                    let historicalShares = 0;
+                                    let historicalCost = 0;
+                                    
+                                    pastTxs.forEach(t => {
+                                      if (t.direction === 'BUY') {
+                                        historicalShares += t.quantity;
+                                        historicalCost += t.totalAmount;
+                                      } else if (t.direction === 'SELL') {
+                                        const currentAvg = historicalShares > 0 ? historicalCost / historicalShares : 0;
+                                        historicalShares -= t.quantity;
+                                        historicalCost -= (currentAvg * t.quantity);
+                                      }
+                                    });
+                                    
+                                    const historicalAvgCost = historicalShares > 0 ? historicalCost / historicalShares : 0;
+                                    const historicalPL = (wp.price - historicalAvgCost) * historicalShares;
+                                    const historicalRoi = historicalAvgCost > 0 ? ((wp.price / historicalAvgCost) - 1) * 100 : 0;
+
+                                    return (
+                                      <div key={i} className="flex justify-between items-center bg-[var(--bg-primary)] border border-[var(--border)] p-3 rounded-xl text-xs font-mono group hover:bg-[var(--bg-secondary)] transition-all">
+                                        <div className="flex flex-col gap-1 flex-1">
+                                          <div className="flex items-center gap-3">
+                                            <span className="opacity-50 text-[10px]">{wp.date}</span>
+                                            <span className="font-bold text-[var(--accent)]">${wp.price.toLocaleString()}</span>
+                                            {historicalShares > 0 && (
+                                              <span className="text-[9px] px-1.5 py-0.5 bg-[var(--bg-tertiary)] rounded text-[var(--text-dim)]">
+                                                {historicalShares.toLocaleString()} 股
+                                              </span>
+                                            )}
+                                          </div>
+                                          {historicalShares > 0 && (
+                                            <div className="flex items-center gap-3 opacity-80">
+                                              <span className={cn("text-[10px] font-bold", historicalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                                                {historicalPL >= 0 ? '▲' : '▼'} ${Math.abs(historicalPL).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                              </span>
+                                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-sm", historicalPL >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
+                                                {historicalRoi >= 0 ? '+' : ''}{historicalRoi.toFixed(1)}%
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <button
+                                            className="text-[var(--accent)] hover:underline flex items-center gap-1 text-[10px] opacity-60 hover:opacity-100"
+                                            onClick={() => {
+                                              setFormData({ ...formData, date: wp.date, unitPrice: wp.price });
+                                              const entryHeader = Array.from(document.querySelectorAll('span')).find(el => el.textContent === '每週收盤價登錄');
+                                              entryHeader?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            }}
+                                          >
+                                            <Edit2 size={10} /> 編輯
+                                          </button>
+                                          <button
+                                            className="text-[var(--danger)] hover:underline flex items-center gap-1 text-[10px] opacity-60 hover:opacity-100"
+                                            onClick={() => {
+                                              if (window.confirm('確定要刪除這筆收盤價紀錄嗎？')) {
+                                                setWeeklyPrices(weeklyPrices.filter(item => !(item.date === wp.date && item.ticker === wp.ticker)));
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 size={10} /> 刪除
+                                          </button>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-3">
-                                        <button
-                                          className="text-[var(--accent)] hover:underline flex items-center gap-1 text-[10px]"
-                                          onClick={() => {
-                                            setFormData({ ...formData, date: wp.date, unitPrice: wp.price });
-                                            // 尋找「每週收盤價登錄」這幾個字所在的區塊並捲動過去
-                                            const entryHeader = Array.from(document.querySelectorAll('span')).find(el => el.textContent === '每週收盤價登錄');
-                                            entryHeader?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                          }}
-                                        >
-                                          <Edit2 size={10} /> 編輯
-                                        </button>
-                                        <button
-                                          className="text-[var(--danger)] hover:underline flex items-center gap-1 text-[10px]"
-                                          onClick={() => {
-                                            if (window.confirm('確定要刪除這筆收盤價紀錄嗎？')) {
-                                              setWeeklyPrices(weeklyPrices.filter(item => !(item.date === wp.date && item.ticker === wp.ticker)));
-                                            }
-                                          }}
-                                        >
-                                          <Trash2 size={10} /> 刪除
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                               </div>
                             </div>
                           </div>
@@ -829,6 +984,7 @@ export default function App() {
               chartData={chartData}
               appData={appData}
               marketData={marketData}
+              weeklyPrices={weeklyPrices}
               setSelectedTicker={setSelectedTicker}
               setActiveView={setActiveView}
             />

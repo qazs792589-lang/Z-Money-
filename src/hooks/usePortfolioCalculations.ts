@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { Config, TransactionCategory, TransactionDirection, Holding, RealizedProfit, Transaction } from '../types';
+import { Config, TransactionCategory, TransactionDirection, Holding, RealizedProfit, Transaction, WeeklyPrice } from '../types';
 
-export const usePortfolioCalculations = (transactions: Transaction[], marketData: { updated: string | null; prices: Record<string, number> }) => {
+export const usePortfolioCalculations = (transactions: Transaction[], marketData: { updated: string | null; prices: Record<string, number> }, weeklyPrices: WeeklyPrice[]) => {
   const appData = useMemo(() => {
     const holdings: Record<string, Holding> = {};
     const realizedList: RealizedProfit[] = [];
@@ -16,7 +16,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
       stockGroups[tx.ticker].push(tx);
 
       if (!holdings[tx.ticker]) {
-        holdings[tx.ticker] = { ticker: tx.ticker, name: tx.name, currentShares: 0, avgCost: 0, totalInvested: 0 };
+        holdings[tx.ticker] = { ticker: tx.ticker, name: tx.name, currentShares: 0, avgCost: 0, totalInvested: 0, realizedPL: 0 };
       }
 
       const h = holdings[tx.ticker];
@@ -39,6 +39,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
         const sellRevenue = Math.abs(tx.totalAmount);
 
         const profit = sellRevenue - costBasis;
+        h.realizedPL += profit; // Track realized profit
         // Net price = net total / quantity
         const netPrice = sellRevenue / sellQty;
 
@@ -79,14 +80,18 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
     let totalMarketValue = 0;
     let totalInvested = 0;
     appData.activeHoldings.forEach(h => {
-      const price = marketData.prices[h.ticker] || h.avgCost;
+      const latestWeekly = weeklyPrices
+        .filter(wp => wp.ticker === h.ticker)
+        .sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
+      
+      const price = marketData.prices[h.ticker] || latestWeekly || h.avgCost;
       totalMarketValue += price * h.currentShares;
       totalInvested += h.totalInvested;
     });
     const unrealizedPL = totalMarketValue - totalInvested;
     const roi = totalInvested > 0 ? (unrealizedPL / totalInvested) * 100 : 0;
     return { totalMarketValue, totalInvested, unrealizedPL, roi };
-  }, [appData.activeHoldings, marketData.prices]);
+  }, [appData.activeHoldings, marketData.prices, weeklyPrices]);
 
   return { appData, stats };
 };

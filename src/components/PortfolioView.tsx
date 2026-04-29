@@ -27,6 +27,7 @@ interface PortfolioViewProps {
   marketData: {
     prices: Record<string, number>;
   };
+  weeklyPrices: any[];
   setSelectedTicker: (ticker: string) => void;
   setActiveView: (view: 'A' | 'B' | 'C') => void;
 }
@@ -36,28 +37,30 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   chartData,
   appData,
   marketData,
+  weeklyPrices,
   setSelectedTicker,
   setActiveView
 }) => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <h2 className="text-2xl font-black flex items-center gap-3">
-        <LayoutDashboard className="text-[var(--accent)]" /> 未實現損益 (Unrealized P/L)
+        <LayoutDashboard className="text-[var(--accent)]" /> 未實現損益
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="stat-box">
-          <div className="stat-label">總投入本金 (Invested)</div>
+          <div className="stat-label">總投入本金</div>
           <div className="stat-value text-[var(--text-main)]">${stats.totalInvested.toLocaleString()}</div>
         </div>
         <div className="stat-box border-[var(--accent)]">
-          <div className="stat-label">當前總市值 (Market Value)</div>
+          <div className="stat-label">當前總市值</div>
           <div className="stat-value text-[var(--accent)]">${stats.totalMarketValue.toLocaleString()}</div>
         </div>
         <div className={cn("stat-box", stats.unrealizedPL >= 0 ? "border-[var(--success)]" : "border-[var(--danger)]")}>
           <div className="stat-label">帳面總損益</div>
           <div className={cn("stat-value", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
             {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString()}
+            <span className="text-sm ml-2 opacity-80">({stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%)</span>
           </div>
         </div>
       </div>
@@ -68,7 +71,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <h3 className="text-sm font-bold opacity-60 flex items-center gap-2">
               <Activity size={14} /> 週倉位價值變化趨勢
             </h3>
-            <div className="text-[10px] font-mono text-[var(--text-dim)]">52-WEEK DATA SYNC</div>
           </div>
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -84,22 +86,15 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 />
                 <YAxis
                   yAxisId="left"
-                  orientation="left"
                   stroke="var(--text-dim)"
                   fontSize={10}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(val) => `$${(val / 10000).toFixed(0)}w`}
-                  tickMargin={10}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="var(--success)"
-                  fontSize={10}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(val) => `${(val / 10000).toFixed(0)}w`}
+                  domain={['auto', 'auto']}
+                  tickFormatter={(val) => {
+                    if (Math.abs(val) >= 10000) return `${(val / 10000).toFixed(1)}萬`;
+                    return val.toLocaleString();
+                  }}
                   tickMargin={10}
                 />
                 <Tooltip
@@ -145,7 +140,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 />
                 <Line
                   yAxisId="left"
-                  type="stepAfter"
+                  type="monotone"
                   name="投入總成本"
                   dataKey="cost"
                   stroke="var(--danger)"
@@ -154,8 +149,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   activeDot={{ r: 6 }}
                   strokeDasharray="5 5"
                 />
-                <Line
-                  yAxisId="right"
+                 <Line
+                  yAxisId="left"
                   type="monotone"
                   name="帳面總損益"
                   dataKey="profit"
@@ -175,7 +170,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[var(--border)]">
             {appData.activeHoldings.map(h => {
-              const curPrice = marketData.prices[h.ticker] || h.avgCost;
+              const latestWeekly = weeklyPrices
+                .filter(wp => wp.ticker === h.ticker)
+                .sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
+              const curPrice = marketData.prices[h.ticker] || latestWeekly || h.avgCost;
               const hpl = (curPrice - h.avgCost) * h.currentShares;
               const hroi = h.avgCost > 0 ? (hpl / h.totalInvested) * 100 : 0;
               return (

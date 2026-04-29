@@ -11,27 +11,44 @@ import {
   Legend
 } from 'recharts';
 import { Transaction, WeeklyPrice } from '../types';
+import { cn } from '../lib/utils';
 
 export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketData }: { ticker: string, transactions: Transaction[], weeklyPrices: WeeklyPrice[], marketData: any }) => {
   const chartData: any[] = [];
 
   const combinedData = useMemo(() => {
-    let dataToUse = weeklyPrices.length > 0 ? weeklyPrices.map(wp => ({
-      date: wp.date,
-      timestamp: new Date(wp.date).getTime(),
-      price: wp.price
-    })) : chartData;
+    // 1. Collect all unique dates from both weekly prices and transactions
+    const allDates = new Set<string>();
+    weeklyPrices.forEach(wp => allDates.add(wp.date));
+    transactions.forEach(tx => allDates.add(tx.date));
+    
+    // Sort all dates chronologically
+    const sortedTimeline = Array.from(allDates).sort();
 
-    // 強制按照時間排序，防止連線跳躍
-    dataToUse.sort((a, b) => a.timestamp - b.timestamp);
+    // 2. Generate data points with forward-filled prices
+    let lastKnownPrice = marketData.prices?.[ticker] || 0;
+    
+    let dataToUse = sortedTimeline.map(date => {
+      const wp = weeklyPrices.find(w => w.date === date);
+      const txPrice = transactions.find(t => t.date === date)?.unitPrice;
+      
+      // Update last known price if we have a new one today
+      if (wp) lastKnownPrice = wp.price;
+      else if (txPrice) lastKnownPrice = txPrice;
 
-    // Fallback: If no history, see if we have a current static price
-    const currentPrice = marketData.prices?.[ticker];
-    if (dataToUse.length === 0 && currentPrice) {
+      return {
+        date,
+        timestamp: new Date(date).getTime(),
+        price: lastKnownPrice
+      };
+    });
+
+    if (!dataToUse.length && marketData.prices?.[ticker]) {
+      const today = new Date().toISOString().split('T')[0];
       dataToUse = [{
-        date: new Date().toISOString().split('T')[0],
-        timestamp: Date.now(),
-        price: currentPrice
+        date: today,
+        timestamp: new Date(today).getTime(),
+        price: marketData.prices[ticker]
       }];
     }
 
@@ -73,12 +90,15 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
       // Prevent negative invested space from zeroing out if there is weird data
       if (totalInvested < 0) totalInvested = 0;
 
+      const txsToday = sortedTxs.filter(tx => tx.date === pointDateStr);
+
       return {
         ...point,
         shares: currentShares,
-        positionValue: currentShares > 0 ? Number((currentShares * point.price).toFixed(2)) : 0,
-        totalCost: currentShares > 0 ? Number(totalInvested.toFixed(2)) : 0,
-        isTxPoint: hasTxToday ? (currentShares > 0 ? Number((currentShares * point.price).toFixed(2)) : 0) : null
+        positionValue: Number((currentShares * point.price).toFixed(2)),
+        totalCost: Number(totalInvested.toFixed(2)),
+        isTxPoint: hasTxToday ? (currentShares > 0 ? Number((currentShares * point.price).toFixed(2)) : 0) : null,
+        txsToday: txsToday.length > 0 ? txsToday : null
       };
     });
 
@@ -133,9 +153,25 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                 isAnimationActive={false}
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
+                    const dataPoint = payload[0].payload;
                     return (
                       <div className="bg-[var(--bg-secondary)] backdrop-blur-md border border-[var(--border)] px-3 py-2 rounded-lg shadow-xl text-[10px] md:text-xs font-mono select-none pointer-events-none mb-10 translate-y-[-20px]">
                         <p className="text-[var(--text-dim)] font-bold mb-1.5 opacity-70 border-b border-[var(--border)] pb-1">{label?.toString().replace(/-/g, '/')} </p>
+                        
+                        {dataPoint.txsToday && (
+                          <div className="mb-2 space-y-1">
+                            {dataPoint.txsToday.map((tx: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 text-[9px]">
+                                <span className={cn("px-1 rounded font-black", tx.direction === 'BUY' ? "bg-[var(--danger)] text-white" : "bg-[var(--success)] text-white")}>
+                                  {tx.direction === 'BUY' ? '買' : '賣'}
+                                  {tx.quantity}
+                                </span>
+                                <span className="text-[var(--text-main)]">${tx.unitPrice}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         {payload.map((entry, index) => {
                           if (entry.dataKey !== 'positionValue' && entry.dataKey !== 'totalCost') return null;
                           return (
@@ -160,13 +196,14 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
               />
               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} formatter={(value) => value === 'totalCost' ? '持有成本' : value === 'positionValue' ? '累積市值' : '交易打點'} />
               <Line
-                type="stepAfter"
+                type="monotone"
                 dataKey="totalCost"
                 name="totalCost"
                 stroke="var(--danger)"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
+                connectNulls={true}
               />
               <Line
                 type="monotone"
@@ -176,6 +213,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
+                connectNulls={true}
               />
               <Scatter dataKey="isTxPoint" name="交易打點" fill="var(--success)" />
             </ComposedChart>
