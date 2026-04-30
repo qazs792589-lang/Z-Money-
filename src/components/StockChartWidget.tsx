@@ -26,7 +26,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
     const sortedTimeline = Array.from(allDates).sort();
 
     // 2. Generate data points with forward-filled prices
-    let lastKnownPrice = marketData.prices?.[ticker] || 0;
+    let lastKnownPrice = 0;
     
     let dataToUse = sortedTimeline.map(date => {
       const wp = weeklyPrices.find(w => w.date === date);
@@ -34,14 +34,14 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
       
       // Update last known price if we have a new one today
       if (wp) lastKnownPrice = wp.price;
-      else if (txPrice) lastKnownPrice = txPrice;
+      else if (txPrice && lastKnownPrice === 0) lastKnownPrice = txPrice;
 
       return {
         date,
         timestamp: new Date(date).getTime(),
         price: lastKnownPrice
       };
-    });
+    }).filter(d => d.price > 0); // Only show data from the first known price
 
     if (!dataToUse.length && marketData.prices?.[ticker]) {
       const today = new Date().toISOString().split('T')[0];

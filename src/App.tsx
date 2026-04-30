@@ -99,25 +99,46 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/);
-        if (lines.length < 2) return;
+        const rawLines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (rawLines.length < 2) return;
 
-        const headers = lines[0].split(',').map(h => h.trim());
+        // 1. Find the header line (looking for Date or Price equivalent)
+        let headerIdx = -1;
+        let headers: string[] = [];
+        for (let i = 0; i < rawLines.length; i++) {
+          const row = rawLines[i].split(',').map(h => h.trim().replace(/"/g, ''));
+          if (row.includes('日期') || row.includes('收盤價') || row.some(s => s.toLowerCase() === 'date' || s.toLowerCase() === 'price')) {
+            headerIdx = i;
+            headers = row;
+            break;
+          }
+        }
+
+        if (headerIdx === -1) {
+          alert('CSV 格式錯誤，找不到「日期」或「收盤價」標題行。');
+          return;
+        }
+
         const dateIdx = headers.findIndex(h => h === '日期' || h.toLowerCase() === 'date');
         const priceIdx = headers.findIndex(h => h === '收盤價' || h.toLowerCase() === 'price' || h.toLowerCase().includes('closing'));
 
         if (dateIdx === -1 || priceIdx === -1) {
-          alert('CSV 格式錯誤，必須包含「日期」與「收盤價」欄位。');
+          alert('CSV 標題行格式錯誤，必須包含「日期」與「收盤價」欄位。');
           return;
         }
 
         const newEntries: WeeklyPrice[] = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(',').map(c => c.trim());
+        // Regex to split CSV while respecting quotes
+        const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+
+        for (let i = headerIdx + 1; i < rawLines.length; i++) {
+          const cols = rawLines[i].split(csvRegex).map(c => c.trim().replace(/"/g, ''));
           if (cols.length <= Math.max(dateIdx, priceIdx)) continue;
 
           const date = cols[dateIdx];
-          const price = parseFloat(cols[priceIdx]);
+          // Remove commas and spaces from price string (e.g. "1,200.50" -> 1200.50)
+          const priceStr = cols[priceIdx].replace(/,/g, '');
+          const price = parseFloat(priceStr);
 
           if (date && !isNaN(price)) {
             newEntries.push({ date, ticker, price });
@@ -130,6 +151,8 @@ export default function App() {
             return [...others, ...newEntries].sort((a, b) => a.date.localeCompare(b.date));
           });
           alert(`成功匯入 ${newEntries.length} 筆收盤價紀錄！`);
+        } else {
+          alert('找不到有效的數據行，請檢查日期格式與數值。');
         }
       } catch (err) {
         console.error('CSV Import error:', err);
@@ -199,6 +222,7 @@ export default function App() {
     return timeline.map(date => {
       let totalValue = 0;
       let totalCost = 0;
+      const breakdown: Record<string, number> = {};
 
       // Group transactions by ticker for easier processing
       const tickers = Object.keys(appData.stockGroups);
@@ -230,8 +254,12 @@ export default function App() {
             .sort((a, b) => b.date.localeCompare(a.date))[0];
           
           const price = priceEntry ? priceEntry.price : (pastTxs[0]?.unitPrice || 0);
-          totalValue += shares * price;
+          const value = shares * price;
+          totalValue += value;
           totalCost += cost;
+          breakdown[ticker] = Math.floor(value);
+        } else {
+          breakdown[ticker] = 0;
         }
       });
 
@@ -239,7 +267,8 @@ export default function App() {
         name: date,
         value: Math.floor(totalValue),
         cost: Math.floor(totalCost),
-        profit: Math.floor(totalValue - totalCost)
+        profit: Math.floor(totalValue - totalCost),
+        breakdown
       };
     });
   }, [appData.stockGroups, weeklyPrices]);
@@ -333,13 +362,16 @@ export default function App() {
         </div>
         <div className="flex items-center gap-3 md:gap-6">
           <div className="flex flex-col items-end">
-            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-mono uppercase tracking-[0.2em]">Asset Value</span>
+            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">資產總市值</span>
             <span className="text-xs md:text-sm font-mono font-bold text-[var(--accent)]">${stats.totalMarketValue.toLocaleString()}</span>
           </div>
           <div className="h-8 w-[1px] bg-[var(--border)] hidden sm:block" />
-          <div className="text-[10px] font-mono text-[var(--success)] hidden sm:flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
-            MARKET_DATA: {marketData.updated ? new Date(marketData.updated).toLocaleTimeString() : 'FETCHING...'}
+          <div className="flex flex-col items-end hidden sm:flex">
+            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">未實現總損益</span>
+            <div className={cn("text-xs md:text-sm font-mono font-bold", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+              {stats.unrealizedPL >= 0 ? '▲' : '▼'} ${Math.abs(stats.unrealizedPL).toLocaleString()}
+              <span className="ml-2 text-[10px] md:text-xs">({stats.roi.toFixed(2)}%)</span>
+            </div>
           </div>
         </div>
       </header>
