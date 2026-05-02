@@ -1,19 +1,4 @@
 import React, { useMemo } from 'react';
-<<<<<<< HEAD
-import { LayoutDashboard, Activity, Edit2 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Line,
-  PieChart,
-  Pie,
-  Cell
-=======
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -23,11 +8,16 @@ import {
   Tooltip, 
   CartesianGrid, 
   ReferenceLine,
-  Legend
->>>>>>> cb2b39583a34f4053e0c2078963540f1c7d4e615
+  Legend,
+  ComposedChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 import { cn } from '../lib/utils';
-import { TrendingUp, Activity, PieChart, ArrowUpRight, ArrowDownRight, Layers } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { LayoutDashboard, TrendingUp, Activity, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Layers, Edit2 } from 'lucide-react';
 
 interface PortfolioViewProps {
   stats: any;
