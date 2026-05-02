@@ -40,6 +40,9 @@ export interface RealizedProfit {
   shares: number;
   buyPrice: number;
   sellPrice: number;
+  totalCost: number;
+  totalRevenue: number;
+  totalFees: number; // Fees + Taxes
   profit: number;
   roi: number;
   daysHeld: number;

@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { History, FileUp, Edit2, Check } from 'lucide-react';
+import { History, FileUp, Edit2, Check, ChevronRight, ChevronDown, Clock } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import { cn } from '../lib/utils';
-import { RealizedProfit } from '../types';
+import { RealizedProfit, Transaction } from '../types';
 
 interface RealizedViewProps {
-  realizedList: RealizedProfit[];
+  appData: any;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUpdateNotes: (txId: string, notes: string) => void;
 }
 
-export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImport, onUpdateNotes }) => {
+export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, onUpdateNotes }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [expandedTickers, setExpandedTickers] = useState<Record<string, boolean>>({});
 
-  const startEditing = (r: RealizedProfit) => {
-    if (!r.sellTxId) return;
-    setEditingId(r.sellTxId);
-    setEditValue(r.notes || '');
+  const startEditing = (txId: string, currentNotes: string) => {
+    setEditingId(txId);
+    setEditValue(currentNotes || '');
   };
 
   const saveEdit = (txId: string) => {
@@ -25,11 +25,46 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImpo
     setEditingId(null);
   };
 
+  const toggleExpand = (ticker: string) => {
+    setExpandedTickers(prev => ({ ...prev, [ticker]: !prev[ticker] }));
+  };
+
+  const tickerHistory = useMemo(() => {
+    const groups: Record<string, {
+      name: string;
+      transactions: any[];
+      cumulativeProfit: number;
+    }> = {};
+
+    Object.entries(appData.stockGroups).forEach(([ticker, txs]: [string, any]) => {
+      const realizedItems = appData.realizedList.filter((r: RealizedProfit) => r.ticker === ticker);
+      const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
+
+      const displayRows = [...txs].sort((a, b) => a.date.localeCompare(b.date)).map(tx => {
+        const realizedInfo = realizedItems.find((r: RealizedProfit) => r.sellTxId === tx.id);
+        return {
+          ...tx,
+          realizedProfit: realizedInfo?.profit,
+          realizedRoi: realizedInfo?.roi,
+          daysHeld: realizedInfo?.daysHeld
+        };
+      });
+
+      groups[ticker] = {
+        name: txs[0]?.name || ticker,
+        transactions: displayRows,
+        cumulativeProfit: totalProfit
+      };
+    });
+
+    return Object.entries(groups).sort((a, b) => b[1].cumulativeProfit - a[1].cumulativeProfit);
+  }, [appData]);
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black flex items-center gap-3">
-          <History className="text-[var(--accent)]" /> 已實現損益
+          <History className="text-[var(--accent)]" /> 歷史交易全紀錄 (依標的分組)
         </h2>
         <div className="flex gap-2">
           <input
@@ -48,90 +83,135 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImpo
         </div>
       </div>
 
-      <div className="elegant-card overflow-hidden">
-        <div className="bg-[var(--bg-tertiary)] px-6 py-4 border-b border-[var(--border)] flex justify-between items-center">
-          <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-dim)]">已結清倉位列表</span>
-          <div className="text-[10px] px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded text-[var(--success)] font-mono">
-            篩選：僅顯示已實現
+      <div className="space-y-6">
+        {tickerHistory.map(([ticker, group]) => (
+          <div key={ticker} className="elegant-card overflow-hidden border-[var(--border)] shadow-xl">
+            <div 
+              onClick={() => toggleExpand(ticker)}
+              className="bg-[var(--bg-tertiary)] px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors border-b border-[var(--border)]"
+            >
+              <div className="flex items-center gap-5">
+                <div className="text-[var(--accent)]">
+                  {expandedTickers[ticker] !== false ? <ChevronDown size={22} /> : <ChevronRight size={22} />}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight">{group.name}</span>
+                  <span className="text-[10px] text-[var(--text-dim)] font-mono tracking-widest">{ticker}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[9px] text-[var(--text-dim)] uppercase font-bold block mb-1 tracking-widest opacity-60">累積結清淨損益</span>
+                <span className={cn("text-xl font-mono font-black", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                  {group.cumulativeProfit >= 0 ? '+' : ''}{group.cumulativeProfit.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                </span>
+              </div>
+            </div>
+
+            {expandedTickers[ticker] !== false && (
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left min-w-[1300px]">
+                  <thead>
+                    <tr className="text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest bg-[var(--bg-primary)]">
+                      <th className="px-6 py-4">日期</th>
+                      <th className="px-6 py-4">單價</th>
+                      <th className="px-6 py-4">股數 (買負賣正)</th>
+                      <th className="px-6 py-4">股息</th>
+                      <th className="px-6 py-4">手續/稅費</th>
+                      <th className="px-6 py-4">淨收支 (現金流)</th>
+                      <th className="px-6 py-4 bg-[var(--bg-tertiary)]/30">已結清損益</th>
+                      <th className="px-6 py-4 bg-[var(--bg-tertiary)]/30">ROI%</th>
+                      <th className="px-6 py-4">持有天數</th>
+                      <th className="px-6 py-4 text-right">備註</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {group.transactions.map((tx) => {
+                      const isDividend = tx.direction === 'DIVIDEND';
+                      const isBuy = tx.direction === 'BUY';
+                      const isSell = tx.direction === 'SELL';
+
+                      return (
+                        <tr key={tx.id} className="hover:bg-[var(--bg-secondary)]/50 transition-colors group">
+                          <td className="px-6 py-4 font-mono text-xs">{tx.date}</td>
+                          <td className="px-6 py-4 font-mono text-xs">
+                            {isDividend ? <span className="opacity-20">-</span> : `$${tx.unitPrice.toLocaleString()}`}
+                          </td>
+                          <td className={cn("px-6 py-4 font-mono text-xs font-bold", isBuy ? "text-[var(--danger)]" : isSell ? "text-[var(--success)]" : "opacity-20")}>
+                            {isBuy ? `-${tx.quantity.toLocaleString()}` : isSell ? `+${tx.quantity.toLocaleString()}` : '-'}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs text-yellow-500 font-bold">
+                            {isDividend ? `$${tx.totalAmount.toLocaleString()}` : <span className="opacity-20">-</span>}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs text-[var(--text-dim)]">
+                            {tx.fee + tx.tax > 0 ? (
+                              <span>${(tx.fee + tx.tax).toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
+                            ) : <span className="opacity-20">$0</span>}
+                          </td>
+                          <td className={cn(
+                            "px-6 py-4 font-mono text-xs font-black",
+                            isBuy ? "text-[var(--danger)]" : (isDividend ? "text-yellow-500" : "text-[var(--success)]")
+                          )}>
+                            {isBuy ? '-' : '+'}${Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </td>
+                          
+                          <td className={cn(
+                            "px-6 py-4 font-mono text-xs font-black bg-[var(--bg-tertiary)]/10",
+                            tx.realizedProfit !== undefined ? (tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]") : "opacity-10"
+                          )}>
+                            {tx.realizedProfit !== undefined ? (
+                              <>{tx.realizedProfit >= 0 ? '+' : ''}{tx.realizedProfit.toLocaleString(undefined, { maximumFractionDigits: 1 })}</>
+                            ) : '-'}
+                          </td>
+                          
+                          <td className="px-6 py-4 bg-[var(--bg-tertiary)]/10">
+                            {(tx.realizedRoi !== undefined && !isDividend) ? (
+                              <span className={cn(
+                                "text-[10px] px-2 py-0.5 rounded font-bold",
+                                tx.realizedRoi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]"
+                              )}>
+                                {tx.realizedRoi >= 0 ? '+' : ''}{tx.realizedRoi.toFixed(2)}%
+                              </span>
+                            ) : <span className="opacity-10">-</span>}
+                          </td>
+
+                          {/* NEW: Days Held Column */}
+                          <td className="px-6 py-4 font-mono text-[10px] text-[var(--text-dim)]">
+                            {tx.daysHeld !== undefined && tx.daysHeld > 0 ? (
+                              <div className="flex items-center gap-1.5">
+                                <Clock size={10} className="opacity-40" />
+                                <span>{tx.daysHeld} 天</span>
+                              </div>
+                            ) : <span className="opacity-10">-</span>}
+                          </td>
+
+                          <td className="px-6 py-4 text-right">
+                            {editingId === tx.id ? (
+                              <input
+                                autoFocus
+                                className="bg-[var(--bg-primary)] border border-[var(--accent)] rounded px-2 py-1 text-[10px] text-[var(--text-main)] w-full max-w-[120px]"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && saveEdit(tx.id)}
+                                onBlur={() => saveEdit(tx.id)}
+                              />
+                            ) : (
+                              <div 
+                                onClick={() => startEditing(tx.id, tx.notes)}
+                                className="text-[10px] text-[var(--text-dim)] italic cursor-pointer truncate max-w-[150px] ml-auto hover:text-[var(--accent)]"
+                              >
+                                {tx.notes || '點擊編輯備註'}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        </div>
-        <div className="overflow-x-auto custom-scrollbar pb-4">
-          <table className="w-full text-left min-w-[1000px]">
-            <thead>
-              <tr className="text-[10px] text-[var(--text-main)] font-bold uppercase tracking-wider bg-[var(--bg-tertiary)]">
-                <th className="px-6 py-4 font-bold sticky left-0 bg-[var(--bg-tertiary)] z-10">結清日期</th>
-                <th className="px-6 py-4 font-bold sticky left-[100px] bg-[var(--bg-tertiary)] z-10">標的碼</th>
-                <th className="px-6 py-4 font-bold">成交股數</th>
-                <th className="px-6 py-4 font-bold">成本均價</th>
-                <th className="px-6 py-4 font-bold">賣出價</th>
-                <th className="px-6 py-4 font-bold">淨損益</th>
-                <th className="px-6 py-4 font-bold">ROI %</th>
-                <th className="px-6 py-4 font-bold text-right">備註 (點擊可編輯)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {realizedList.map((r, i) => (
-                <tr key={i} className="hover:bg-[var(--bg-tertiary)] transition-colors group">
-                  <td className="px-6 py-4 font-mono text-xs sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10">{r.closeDate}</td>
-                  <td className="px-6 py-4 sticky left-[100px] bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold">{r.name}</span>
-                      <span className="text-[9px] text-[var(--text-dim)] font-mono">{r.ticker}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-xs">{r.shares.toLocaleString()}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-[var(--text-dim)]">${r.buyPrice.toFixed(2)}</td>
-                  <td className="px-6 py-4 font-mono text-xs">${r.sellPrice.toFixed(2)}</td>
-                  <td className={cn("px-6 py-4 font-mono text-xs font-bold", r.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                    {r.profit >= 0 ? '+' : ''}{r.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "text-[10px] px-2 py-1 rounded font-bold",
-                      r.roi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]"
-                    )}>
-                      {r.roi >= 0 ? '+' : ''}{r.roi.toFixed(2)}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {editingId === r.sellTxId ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <input
-                          autoFocus
-                          className="bg-[var(--bg-primary)] border border-[var(--accent)] rounded px-2 py-1 text-[10px] text-[var(--text-main)] w-full max-w-[150px]"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && r.sellTxId && saveEdit(r.sellTxId)}
-                          onBlur={() => r.sellTxId && saveEdit(r.sellTxId)}
-                        />
-                        <button onClick={() => r.sellTxId && saveEdit(r.sellTxId)} className="text-[var(--success)]">
-                          <Check size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => startEditing(r)}
-                        className="flex items-center justify-end gap-2 group/note cursor-pointer hover:text-[var(--accent)] transition-colors"
-                      >
-                        <span className="text-[10px] text-[var(--text-dim)] italic max-w-[200px] truncate group-hover/note:text-[var(--accent)]">
-                          {r.notes || '點擊新增備註'}
-                        </span>
-                        <Edit2 size={10} className="opacity-0 group-hover/note:opacity-100 transition-opacity" />
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {realizedList.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-[var(--text-dim)] italic text-sm">
-                    目前尚無已結清的交易紀錄。
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        ))}
       </div>
     </div>
   );

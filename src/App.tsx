@@ -581,9 +581,9 @@ export default function App() {
           </div>
           <div className="h-8 w-[1px] bg-[var(--border)] hidden sm:block" />
           <div className="flex flex-col items-end hidden sm:flex">
-            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">未實現總損益</span>
-            <div className={cn("text-xs md:text-sm font-mono font-bold", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-              {stats.unrealizedPL >= 0 ? '▲' : '▼'} ${Math.abs(stats.unrealizedPL).toLocaleString()}
+            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">總損益 (含股息)</span>
+            <div className={cn("text-xs md:text-sm font-mono font-bold", stats.totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+              {stats.totalPL >= 0 ? '▲' : '▼'} ${Math.abs(stats.totalPL).toLocaleString()}
               <span className="ml-2 text-[10px] md:text-xs">({stats.roi.toFixed(2)}%)</span>
             </div>
           </div>
@@ -1111,7 +1111,7 @@ export default function App() {
                                             <div className={cn(
                                               "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase shrink-0",
                                               tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
-                                                tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-orange-500/20 text-orange-500"
+                                                tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-yellow-500/10 text-yellow-500"
                                             )}>
                                               {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
                                             </div>
@@ -1314,7 +1314,7 @@ export default function App() {
 
           {activeView === 'C' && (
             <RealizedView 
-              realizedList={appData.realizedList} 
+              appData={appData} 
               onImport={handleHistoryCsvImport} 
               onUpdateNotes={handleUpdateTransactionNotes}
             />
