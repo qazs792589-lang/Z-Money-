@@ -272,9 +272,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </h3>
               <div className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
-                    <XAxis dataKey="name" stroke="var(--text-dim)" fontSize={9} axisLine={false} tickLine={false} tickMargin={10} />
+                    <XAxis dataKey="name" stroke="var(--text-dim)" fontSize={9} axisLine={false} tickLine={false} tickMargin={5} />
                     <YAxis
                       yAxisId="left"
                       stroke="var(--text-dim)"
@@ -282,8 +282,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       axisLine={false}
                       tickLine={false}
                       domain={['auto', 'auto']}
-                      tickFormatter={(val) => Math.abs(val) >= 10000 ? `${(val / 10000).toFixed(1)}萬` : val.toLocaleString()}
-                      tickMargin={10}
+                      tickMargin={5}
                     />
                     <YAxis
                       yAxisId="right"
@@ -293,8 +292,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       axisLine={false}
                       tickLine={false}
                       domain={['auto', 'auto']}
-                      tickFormatter={(val) => Math.abs(val) >= 10000 ? `${(val / 10000).toFixed(1)}萬` : val.toLocaleString()}
-                      tickMargin={10}
+                      tickMargin={5}
                     />
                     <Tooltip
                       content={({ active, payload, label }) => {
@@ -320,9 +318,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       }}
                     />
                     <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '9px', fontWeight: 'bold' }} />
-                    <Line yAxisId="left" type="monotone" name="當前總市值" dataKey="value" stroke="var(--accent)" strokeWidth={3} dot={{ r: 3, fill: 'var(--accent)' }} />
-                    <Line yAxisId="left" type="monotone" name="投入總成本" dataKey="cost" stroke="var(--danger)" strokeWidth={2} strokeDasharray="4 4" />
-                    <Line yAxisId="right" type="monotone" name="帳面總損益" dataKey="profit" stroke="var(--success)" strokeWidth={2} />
+                    <Line yAxisId="left" type="monotone" name="當前總市值" dataKey="value" stroke="var(--accent)" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                    <Line yAxisId="left" type="monotone" name="投入總成本" dataKey="cost" stroke="var(--danger)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                    <Line yAxisId="right" type="monotone" name="帳面總損益" dataKey="profit" stroke="var(--success)" strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>

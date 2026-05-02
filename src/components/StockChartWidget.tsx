@@ -117,7 +117,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
 
   return (
     <div className="h-full w-full flex flex-col bg-[var(--bg-primary)]">
-      <div className="flex-1 min-h-0 relative p-4">
+      <div className="flex-1 min-h-0 relative px-0 py-4">
         {combinedData.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-[var(--text-dim)] text-center px-4 leading-relaxed">
             目前無圖表資料<br />
@@ -127,13 +127,13 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={combinedData}>
+            <ComposedChart data={combinedData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="date"
                 stroke="var(--text-dim)"
                 fontSize={10}
-                tickMargin={10}
+                tickMargin={5}
                 minTickGap={30}
                 tickFormatter={(val) => {
                   if (typeof val !== 'string') return val;
@@ -147,7 +147,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                 fontSize={10}
                 tickFormatter={(val) => `$${val.toFixed(0)}`}
                 orientation="right"
-                tickMargin={10}
+                tickMargin={5}
               />
               <Tooltip
                 isAnimationActive={false}
@@ -202,6 +202,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                 stroke="var(--danger)"
                 strokeWidth={2}
                 dot={false}
+                activeDot={{ r: 6, strokeWidth: 0 }}
                 isAnimationActive={false}
                 connectNulls={true}
               />
@@ -212,6 +213,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                 stroke="var(--accent)"
                 strokeWidth={2}
                 dot={false}
+                activeDot={{ r: 6, strokeWidth: 0 }}
                 isAnimationActive={false}
                 connectNulls={true}
               />
