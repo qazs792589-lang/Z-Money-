@@ -85,11 +85,11 @@
 
 @layer components {
   .elegant-card {
-    @apply bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5 relative;
+    @apply bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-3.5 md:p-5 relative;
   }
 
   .elegant-input {
-    @apply bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-main)] placeholder:text-[var(--text-dim)] p-2.5 rounded font-mono w-full focus:outline-none focus:border-[var(--accent)];
+    @apply bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-main)] placeholder:text-[var(--text-dim)] p-2.5 rounded font-mono w-full focus:outline-none focus:border-[var(--accent)] text-left;
     -webkit-appearance: none;
   }
 
@@ -104,6 +104,15 @@
   input[type="date"] {
     min-height: 42px;
     position: relative;
+    text-align: left;
+  }
+
+  /* Force left alignment for desktop Chrome/Safari date picker text */
+  input[type="date"]::-webkit-datetime-edit {
+    display: flex !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    padding-left: 0;
   }
 
   .elegant-label {

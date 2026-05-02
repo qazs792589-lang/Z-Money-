@@ -479,7 +479,7 @@ export default function App() {
         )}
 
         <main className={cn(
-          "flex-1 overflow-y-auto p-4 md:p-8 bg-[var(--bg-primary)] transition-all duration-300",
+          "flex-1 overflow-y-auto px-2 py-4 md:p-8 bg-[var(--bg-primary)] transition-all duration-300",
           isSidebarOpen ? "lg:ml-[260px]" : "lg:ml-[80px]"
         )}>
           {activeView === 'A' && (
@@ -535,7 +535,7 @@ export default function App() {
                       <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--accent)] pointer-events-none" />
                       <input
                         type="date"
-                        className="elegant-input pl-11 w-full block cursor-pointer"
+                        className="elegant-input pl-11 w-full block cursor-pointer text-left"
                         value={formData.date}
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         style={{ colorScheme: 'dark' }}
