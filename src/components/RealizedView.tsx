@@ -99,38 +99,43 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
             <div key={ticker} className="elegant-card overflow-hidden border-[var(--border)] shadow-xl">
               <div 
                 onClick={() => toggleExpand(ticker)}
-                className="bg-[var(--bg-tertiary)] px-6 py-5 flex flex-wrap items-center justify-between cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors border-b border-[var(--border)] gap-4"
+                className="bg-[var(--bg-secondary)] p-4 md:p-6 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border)]"
               >
-                <div className="flex items-center gap-5">
-                  <div className="text-[var(--accent)]">
-                    {expandedTickers[ticker] !== false ? <ChevronDown size={22} /> : <ChevronRight size={22} />}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight">{group.name}</span>
-                    <span className="text-[10px] text-[var(--text-dim)] font-mono tracking-widest">{ticker}</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-1 justify-around md:justify-end gap-6 md:gap-12 min-w-[300px]">
-                  <div className="text-right">
-                    <span className="text-[9px] text-[var(--text-dim)] uppercase font-bold block mb-1 tracking-widest opacity-60">累積總成本</span>
-                    <span className="text-sm font-mono font-bold text-[var(--text-main)]">
-                      ${group.cumulativeCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </span>
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="text-[var(--accent)] transition-transform duration-300" style={{ transform: expandedTickers[ticker] !== false ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+                      <ChevronDown size={24} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-tight">{group.name}</span>
+                      <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold tracking-[0.2em]">{ticker}</span>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[9px] text-[var(--text-dim)] uppercase font-bold block mb-1 tracking-widest opacity-60">累積總收入</span>
-                    <span className="text-sm font-mono font-bold text-[var(--text-main)]">
-                      ${group.cumulativeRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </span>
-                  </div>
-                  <div className="text-right border-l border-[var(--border)] pl-6">
-                    <span className="text-[9px] text-[var(--text-dim)] uppercase font-bold block mb-1 tracking-widest opacity-60">累積淨損益</span>
-                    <span className={cn("text-xl font-mono font-black block leading-none", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                      {group.cumulativeProfit >= 0 ? '+' : ''}{group.cumulativeProfit.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    <span className={cn(
+                      "text-xl md:text-2xl font-mono font-black block leading-none",
+                      group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"
+                    )}>
+                      {group.cumulativeProfit >= 0 ? '+' : ''}{group.cumulativeProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                     <span className={cn("text-[10px] font-bold mt-1 inline-block", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                       {group.cumulativeProfit >= 0 ? '▲' : '▼'} {Math.abs(totalRoi).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Info Grid: Responsive 2 columns */}
+                <div className="grid grid-cols-2 gap-4 border-t border-[var(--border)] pt-4">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] md:text-[9px] text-[var(--text-dim)] uppercase font-black tracking-widest opacity-60 mb-1">累積總成本</span>
+                    <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                      ${group.cumulativeCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="flex flex-col text-right">
+                    <span className="text-[8px] md:text-[9px] text-[var(--text-dim)] uppercase font-black tracking-widest opacity-60 mb-1">累積總收入</span>
+                    <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                      ${group.cumulativeRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 </div>
