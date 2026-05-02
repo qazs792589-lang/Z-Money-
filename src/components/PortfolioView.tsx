@@ -96,29 +96,50 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Swiper Content */}
-      <div className="relative overflow-visible">
+      {/* 2. Page Indicators - Fixed nesting to be clickable and outside the card */}
+      <div className="flex justify-center gap-4 px-1 -mt-2 -mb-2 relative z-50">
+        {[0, 1].map(i => (
+          <button
+            key={i}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              paginate(i);
+            }}
+            className="group py-4 px-3 outline-none cursor-pointer touch-none"
+          >
+            <div className={cn(
+              "h-1.5 rounded-full transition-all duration-500 ease-out",
+              page === i 
+                ? "bg-[var(--accent)] w-10 shadow-[0_0_15px_var(--accent-glow)]" 
+                : "bg-[var(--border)] w-3 opacity-40 group-hover:opacity-100 group-hover:bg-[var(--text-dim)]"
+            )} />
+          </button>
+        ))}
+      </div>
+
+      {/* 3. Swiper Content */}
+      <div className="relative overflow-visible cursor-grab active:cursor-grabbing">
         <motion.div
           className="flex w-full"
           animate={{ x: `-${page * 100}%` }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          transition={{ type: "spring", stiffness: 260, damping: 26 }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
+          dragElastic={0.6}
           onDragEnd={(_, info) => {
-            if (info.offset.x < -100 && page === 0) paginate(1);
-            if (info.offset.x > 100 && page === 1) paginate(0);
+            const threshold = 100;
+            const velocityThreshold = 500;
+            if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
+              if (page === 0) paginate(1);
+            } else if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
+              if (page === 1) paginate(0);
+            }
           }}
         >
           {/* Page 1: Allocation & Holdings */}
           <div className="w-full shrink-0 px-1 space-y-10">
             <div className="elegant-card p-6 relative">
-              {/* Floating Page Indicator on Chart */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-30 bg-[var(--bg-primary)]/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-[var(--border)]">
-                <div className={cn("h-1.5 rounded-full transition-all duration-300", page === 0 ? "bg-[var(--accent)] w-5" : "bg-[var(--border)] w-1.5")} />
-                <div className={cn("h-1.5 rounded-full transition-all duration-300", page === 1 ? "bg-[var(--accent)] w-5" : "bg-[var(--border)] w-1.5")} />
-              </div>
-
               <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 mb-8 uppercase tracking-[0.2em] text-[var(--accent)]">
                 <LayoutDashboard size={12} /> Portfolio Allocation
               </h3>
@@ -195,12 +216,17 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   const hroi = h.avgCost > 0 ? (hpl / h.totalInvested) * 100 : 0;
                   return (
                     <div key={h.ticker} className="elegant-card p-5 hover:border-[var(--accent)] transition-all group relative">
-                      <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setSelectedTicker(h.ticker); setActiveView('A'); }} className="text-[var(--accent)]"><Edit2 size={14} /></button>
-                      </div>
                       <div className="flex justify-between items-start mb-6">
                         <div>
-                          <h4 className="text-lg font-black text-[var(--text-main)] leading-none mb-1">{h.name}</h4>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-lg font-black text-[var(--text-main)] leading-none">{h.name}</h4>
+                            <button 
+                              onClick={() => { setSelectedTicker(h.ticker); setActiveView('A'); }} 
+                              className="opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity text-[var(--accent)]"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          </div>
                           <span className="text-[9px] text-[var(--text-dim)] font-mono uppercase tracking-tighter">{h.ticker}</span>
                         </div>
                         <div className="text-right">
@@ -239,12 +265,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           {/* Page 2: Trend & Matrix */}
           <div className="w-full shrink-0 px-1 space-y-10">
             <div className="elegant-card p-6 relative">
-              {/* Floating Page Indicator on Chart */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-30 bg-[var(--bg-primary)]/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-[var(--border)]">
-                <div className={cn("h-1.5 rounded-full transition-all duration-300", page === 0 ? "bg-[var(--accent)] w-5" : "bg-[var(--border)] w-1.5")} />
-                <div className={cn("h-1.5 rounded-full transition-all duration-300", page === 1 ? "bg-[var(--accent)] w-5" : "bg(--border) w-1.5")} />
-              </div>
-
               <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 mb-8 uppercase tracking-[0.2em] text-[var(--accent)]">
                 <Activity size={12} /> Valuation Trend
               </h3>
