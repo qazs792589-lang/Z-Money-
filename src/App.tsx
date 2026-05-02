@@ -64,6 +64,8 @@ import { usePortfolioCalculations } from './hooks/usePortfolioCalculations';
 import { useTransactionForm } from './hooks/useTransactionForm';
 import { PortfolioView } from './components/PortfolioView';
 import { RealizedView } from './components/RealizedView';
+import { LockScreen } from './components/LockScreen';
+import { Shield, Lock as LockIcon, Unlock as UnlockIcon, AlertCircle } from 'lucide-react';
 
 export default function App() {
   const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('A');
@@ -94,6 +96,10 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [isEditingTickers, setIsEditingTickers] = useState(false);
+  const [appPassword, setAppPassword] = useState(() => localStorage.getItem('z_money_pass') || '');
+  const [isLocked, setIsLocked] = useState(!!appPassword);
+  const [isSettingPass, setIsSettingPass] = useState(false);
+  const [newPass, setNewPass] = useState('');
 
   // Persistence: Save on Change
   useEffect(() => {
@@ -115,6 +121,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('z_money_ticker_order', JSON.stringify(tickerOrder));
   }, [tickerOrder]);
+
+  useEffect(() => {
+    if (appPassword) localStorage.setItem('z_money_pass', appPassword);
+    else localStorage.removeItem('z_money_pass');
+  }, [appPassword]);
 
   useEffect(() => {
     if (theme === 'gold') {
@@ -447,6 +458,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] font-sans flex flex-col">
+      <AnimatePresence>
+        {isLocked && appPassword && (
+          <LockScreen savedPassword={appPassword} onUnlock={() => setIsLocked(false)} />
+        )}
+      </AnimatePresence>
       {/* Header */}
       <header className="bg-[var(--bg-secondary)] border-b border-[var(--border)] flex items-center justify-between px-4 md:px-6 z-40 shadow-lg h-16 shrink-0 sticky top-0">
         <div className="flex items-center gap-3">
@@ -539,6 +555,99 @@ export default function App() {
                 </button>
               ))}
             </nav>
+          </div>
+
+          <div>
+            <span className={cn(
+              "text-[10px] font-bold text-[var(--text-dim)] uppercase tracking-widest pl-2 mb-4 block transition-opacity",
+              !isSidebarOpen && "lg:opacity-0"
+            )}>
+              Security
+            </span>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setIsSettingPass(!isSettingPass)}
+                className={cn(
+                  "flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all border group relative overflow-hidden",
+                  isSettingPass
+                    ? "bg-[var(--bg-tertiary)] border-[var(--accent)] text-[var(--accent)]"
+                    : "bg-transparent border-transparent text-[var(--text-dim)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[var(--text-main)]",
+                  !isSidebarOpen && "lg:px-0 lg:justify-center"
+                )}
+              >
+                <Shield size={18} />
+                <span className={cn("text-sm font-bold", !isSidebarOpen && "lg:hidden")}>安全設定</span>
+              </button>
+
+              <AnimatePresence>
+                {isSettingPass && isSidebarOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="px-2 space-y-3 overflow-hidden"
+                  >
+                    <div className="p-3 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)]">
+                      <label className="text-[9px] font-bold text-[var(--text-dim)] uppercase mb-2 block">
+                        {appPassword ? '修改或取消 PIN 碼 (4-6 位)' : '設定 4-6 位 PIN 碼'}
+                      </label>
+                      <input
+                        type="password"
+                        maxLength={6}
+                        placeholder="••••••"
+                        value={newPass}
+                        onChange={(e) => setNewPass(e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-3 py-2 text-center font-mono tracking-[0.5em] text-lg mb-3"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (newPass.length >= 4) {
+                              setAppPassword(newPass);
+                              setNewPass('');
+                              setIsSettingPass(false);
+                              alert('密碼設定成功！');
+                            } else {
+                              alert('請輸入 4-6 位數字');
+                            }
+                          }}
+                          className="flex-1 bg-[var(--accent)] text-[var(--bg-primary)] py-2 rounded-lg text-xs font-bold"
+                        >
+                          確認
+                        </button>
+                        {appPassword && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm('確定要關閉密碼鎖嗎？')) {
+                                setAppPassword('');
+                                setNewPass('');
+                                setIsSettingPass(false);
+                              }
+                            }}
+                            className="flex-1 bg-[var(--danger)]/20 text-[var(--danger)] py-2 rounded-lg text-xs font-bold"
+                          >
+                            關閉
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        if (window.confirm('警告：這將清除所有交易紀錄與設定！此操作無法復原。')) {
+                          localStorage.clear();
+                          window.location.reload();
+                        }
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-lg transition-all"
+                    >
+                      <AlertCircle size={14} />
+                      <span className="text-[10px] font-bold uppercase">重置所有資料</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           <div className={cn("mt-auto transition-all", !isSidebarOpen && "lg:hidden")}>
