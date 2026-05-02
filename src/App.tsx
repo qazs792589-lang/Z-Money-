@@ -66,13 +66,55 @@ import { PortfolioView } from './components/PortfolioView';
 import { RealizedView } from './components/RealizedView';
 
 export default function App() {
-  const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('B');
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('A');
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('z_money_transactions');
+    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+  });
   const [configs] = useState<Record<TransactionCategory, Config>>(DEFAULT_CONFIGS);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Defaulting to false for mobile friendliness
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const themes = ['gold', 'cyan', 'ocean', 'light', 'zen'] as const;
   type Theme = typeof themes[number];
-  const [theme, setTheme] = useState<Theme>('cyan');
+  const [theme, setTheme] = useState<Theme>(() => {
+    return (localStorage.getItem('z_money_theme') as Theme) || 'cyan';
+  });
+
+  const [marketData, setMarketData] = useState<{ updated: string | null; prices: Record<string, number> }>(() => {
+    const saved = localStorage.getItem('z_money_market_data');
+    return saved ? JSON.parse(saved) : { updated: null, prices: {} };
+  });
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
+  const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>(() => {
+    const saved = localStorage.getItem('z_money_weekly_prices');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [tickerOrder, setTickerOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('z_money_ticker_order');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [isEditingTickers, setIsEditingTickers] = useState(false);
+
+  // Persistence: Save on Change
+  useEffect(() => {
+    localStorage.setItem('z_money_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem('z_money_weekly_prices', JSON.stringify(weeklyPrices));
+  }, [weeklyPrices]);
+
+  useEffect(() => {
+    localStorage.setItem('z_money_market_data', JSON.stringify(marketData));
+  }, [marketData]);
+
+  useEffect(() => {
+    localStorage.setItem('z_money_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('z_money_ticker_order', JSON.stringify(tickerOrder));
+  }, [tickerOrder]);
 
   useEffect(() => {
     if (theme === 'gold') {
@@ -81,13 +123,6 @@ export default function App() {
       document.documentElement.setAttribute('data-theme', theme);
     }
   }, [theme]);
-
-  const [marketData, setMarketData] = useState<{ updated: string | null; prices: Record<string, number> }>({ updated: null, prices: {} });
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-  const [editingTxId, setEditingTxId] = useState<string | null>(null);
-  const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>([]);
-  const [tickerOrder, setTickerOrder] = useState<string[]>([]);
-  const [isEditingTickers, setIsEditingTickers] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const weeklyFileInputRef = useRef<HTMLInputElement>(null);
 
