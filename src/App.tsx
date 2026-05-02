@@ -24,7 +24,10 @@ import {
   Edit2,
   Trash2,
   Palette,
-  FileUp
+  FileUp,
+  Search,
+  Tag,
+  Hash
 } from 'lucide-react';
 
 declare global {
@@ -161,6 +164,19 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(!!appPassword);
   const [isSettingPass, setIsSettingPass] = useState(false);
   const [newPass, setNewPass] = useState('');
+
+  // Auto-mapping logic
+  const stockMap = useMemo(() => {
+    const tMap: Record<string, string> = {};
+    const nMap: Record<string, string> = {};
+    transactions.forEach(tx => {
+      if (tx.ticker && tx.name) {
+        tMap[tx.ticker.toUpperCase()] = tx.name;
+        nMap[tx.name.toUpperCase()] = tx.ticker.toUpperCase();
+      }
+    });
+    return { tMap, nMap };
+  }, [transactions]);
 
   // Persistence: Save on Change
   useEffect(() => {
@@ -766,16 +782,49 @@ export default function App() {
                 </h2>
 
                 <div className={cn("elegant-card space-y-6 transition-all", editingTxId && "border-orange-500/30 shadow-[0_0_30px_rgba(249,115,22,0.1)]")}>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="elegant-label text-xs">標的名稱 / 代號</label>
-                      <input
-                        type="text"
-                        className="elegant-input text-lg uppercase"
-                        placeholder="e.g. 2330 或 台積電"
-                        value={formData.ticker}
-                        onChange={(e) => setFormData({ ...formData, ticker: e.target.value, name: e.target.value })}
-                      />
+                  {/* SPLIT INPUTS with Auto-Mapping */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <label className="elegant-label text-xs">股票代號</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          className="elegant-input text-lg uppercase pl-10"
+                          placeholder="e.g. 2330"
+                          value={formData.ticker}
+                          onChange={(e) => {
+                            const val = e.target.value.toUpperCase();
+                            const mappedName = stockMap.tMap[val];
+                            setFormData({ 
+                              ...formData, 
+                              ticker: val, 
+                              name: mappedName || formData.name // Auto-fill name if found
+                            });
+                          }}
+                        />
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" size={18} />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <label className="elegant-label text-xs">股票名稱</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          className="elegant-input text-lg pl-10"
+                          placeholder="e.g. 台積電"
+                          value={formData.name}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const mappedTicker = stockMap.nMap[val.toUpperCase()];
+                            setFormData({ 
+                              ...formData, 
+                              name: val, 
+                              ticker: mappedTicker || formData.ticker // Auto-fill ticker if found
+                            });
+                          }}
+                        />
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" size={18} />
+                      </div>
                     </div>
                   </div>
 
@@ -1015,11 +1064,9 @@ export default function App() {
                       const unrealizedPL = (curPrice - h.avgCost) * h.currentShares;
                       const totalPL = unrealizedPL + (h.realizedPL || 0);
 
-                      // Calculate ROI: If active, use unrealized ROI. If closed, use realized profit vs total historically invested (approx)
-                      // For simplicity, let's show the ROI based on active avgCost if available, otherwise just total profit.
                       const roi = h.avgCost > 0
                         ? ((curPrice / h.avgCost) - 1) * 100
-                        : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0); // Placeholder for closed positions
+                        : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0); 
                       const displayName = txs.length > 0 ? txs[0].name : h.name;
 
                       return (
@@ -1043,7 +1090,6 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                {/* Sub-stats for all viewports */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pt-8 border-t border-[var(--border)]">
                                   <div>
                                     <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">持有股數</span>
@@ -1064,7 +1110,6 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {/* History Ledger Section */}
                               <div className="flex flex-col border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                                 <div className="px-6 py-3 flex items-center justify-between bg-[var(--bg-tertiary)]">
                                   <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">歷史交易明細表</span>
@@ -1081,7 +1126,6 @@ export default function App() {
                                         exit={{ opacity: 0, scale: 0.95 }}
                                         className="relative overflow-hidden border-b border-[var(--border)] group"
                                       >
-                                        {/* Swipe-to-Delete Background */}
                                         <div className="absolute inset-0 bg-[var(--danger)] flex items-center justify-between px-6">
                                           <div className="flex items-center gap-2 text-white">
                                             <Trash2 size={16} />
@@ -1093,7 +1137,6 @@ export default function App() {
                                           </div>
                                         </div>
 
-                                        {/* Foreground Content */}
                                         <motion.div
                                           drag="x"
                                           dragConstraints={{ left: 0, right: 0 }}
@@ -1158,7 +1201,6 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {/* The Integrated Chart Area (Always bottom) */}
                               <div className="p-4 md:p-8 bg-[var(--bg-primary)] border-t border-[var(--border)]">
                                 <div className="h-[300px] md:h-[450px] rounded-xl overflow-hidden border border-[var(--border)] relative group">
                                   <StockChartWidget ticker={ticker} transactions={txs} weeklyPrices={weeklyPrices.filter(wp => wp.ticker === ticker)} marketData={marketData} />
@@ -1166,7 +1208,6 @@ export default function App() {
                               </div>
                             </div>
 
-                            {/* Weekly Price Input Section */}
                             <div className="bg-[var(--bg-tertiary)] p-3 md:p-6 border-b border-[var(--border)] space-y-4">
                               <div className="flex items-center justify-between">
                                 <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
@@ -1216,7 +1257,6 @@ export default function App() {
                                 {weeklyPrices.filter(wp => wp.ticker === ticker)
                                   .sort((a, b) => b.date.localeCompare(a.date))
                                   .map((wp, i) => {
-                                    // Calculate shares and cost at this specific date
                                     const pastTxs = txs.filter(t => t.date <= wp.date);
                                     let historicalShares = 0;
                                     let historicalCost = 0;
