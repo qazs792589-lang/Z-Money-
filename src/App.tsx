@@ -255,13 +255,15 @@ export default function App() {
           const dividend = parseFloat(cols[4].replace(/,/g, '')) || 0;
           const fee = (parseFloat(cols[6].replace(/,/g, '')) || 0) + (parseFloat(cols[7].replace(/,/g, '')) || 0);
           const tax = parseFloat(cols[8].replace(/,/g, '')) || 0;
+          const notes = cols[16] || '';
 
           if (dividend > 0) {
             newTransactions.push({
               id: Math.random().toString(36).substr(2, 9),
               date, ticker, name: ticker,
               direction: 'DIVIDEND', quantity: 1, unitPrice: dividend,
-              category: 'Stock', fee: 0, tax: 0, totalAmount: dividend
+              category: 'Stock', fee: 0, tax: 0, totalAmount: dividend,
+              notes
             });
           }
 
@@ -274,7 +276,8 @@ export default function App() {
               id: Math.random().toString(36).substr(2, 9),
               date, ticker, name: ticker,
               direction, quantity: qty, unitPrice,
-              category: 'Stock', fee, tax, totalAmount
+              category: 'Stock', fee, tax, totalAmount,
+              notes
             });
           }
         }
@@ -290,6 +293,10 @@ export default function App() {
       if (e.target) e.target.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const handleUpdateTransactionNotes = (txId: string, notes: string) => {
+    setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, notes } : tx));
   };
 
   // Derived Calculations & Logic extracted to custom hooks
@@ -343,7 +350,7 @@ export default function App() {
     const allDates = new Set<string>();
     weeklyPrices.forEach(wp => allDates.add(wp.date));
     transactions.forEach(tx => allDates.add(tx.date));
-    
+
     const timeline = Array.from(allDates).sort();
     if (timeline.length === 0) return [];
 
@@ -355,14 +362,14 @@ export default function App() {
 
       // Group transactions by ticker for easier processing
       const tickers = Object.keys(appData.stockGroups);
-      
+
       tickers.forEach(ticker => {
         const txs = appData.stockGroups[ticker] || [];
         const pastTxs = txs.filter(t => t.date <= date);
-        
+
         let shares = 0;
         let cost = 0;
-        
+
         pastTxs.forEach(t => {
           if (t.direction === 'BUY') {
             shares += t.quantity;
@@ -381,7 +388,7 @@ export default function App() {
           const priceEntry = weeklyPrices
             .filter(wp => wp.ticker === ticker && wp.date <= date)
             .sort((a, b) => b.date.localeCompare(a.date))[0];
-          
+
           const price = priceEntry ? priceEntry.price : (pastTxs[0]?.unitPrice || 0);
           const value = shares * price;
           totalValue += value;
@@ -415,12 +422,14 @@ export default function App() {
       category: formData.category,
       fee: preview.fee,
       tax: preview.tax,
-      totalAmount: preview.total
+      totalAmount: preview.total,
+      notes: formData.notes
     };
 
     if (editingTxId) {
       setTransactions(transactions.map(t => t.id === editingTxId ? newTx : t));
       setEditingTxId(null);
+      // Ensure we switch to the new ticker/name if it changed
       setSelectedTicker(newTx.ticker);
     } else {
       setTransactions([...transactions, newTx]);
@@ -431,7 +440,8 @@ export default function App() {
       ticker: '',
       name: '',
       unitPrice: 0,
-      quantity: 1000
+      quantity: 1000,
+      notes: ''
     }));
   };
 
@@ -446,7 +456,8 @@ export default function App() {
       unitPrice: tx.unitPrice,
       category: tx.category,
       customFee: tx.fee,
-      customTax: tx.tax
+      customTax: tx.tax,
+      notes: tx.notes || ''
     });
     setActiveView('A');
 
@@ -631,7 +642,7 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         if (window.confirm('警告：這將清除所有交易紀錄與設定！此操作無法復原。')) {
@@ -686,50 +697,52 @@ export default function App() {
                 </h2>
 
                 <div className={cn("elegant-card space-y-6 transition-all", editingTxId && "border-orange-500/30 shadow-[0_0_30px_rgba(249,115,22,0.1)]")}>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="elegant-label text-xs">股票代號</label>
+                      <label className="elegant-label text-xs">標的名稱 / 代號</label>
                       <input
                         type="text"
                         className="elegant-input text-lg uppercase"
-                        placeholder="e.g. 2330"
+                        placeholder="e.g. 2330 或 台積電"
                         value={formData.ticker}
-                        onChange={(e) => setFormData({ ...formData, ticker: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="elegant-label text-xs">股票名稱</label>
-                      <input
-                        type="text"
-                        className="elegant-input text-lg"
-                        placeholder="e.g. 台積電"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, ticker: e.target.value, name: e.target.value })}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="elegant-label text-xs">交易日期</label>
-                    <div
-                      className="relative group cursor-pointer"
-                      onClick={(e) => {
-                        const input = e.currentTarget.querySelector('input');
-                        if (input) {
-                          try {
-                            input.showPicker();
-                          } catch (err) {
-                            input.focus();
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="elegant-label text-xs">交易日期</label>
+                      <div
+                        className="relative group cursor-pointer"
+                        onClick={(e) => {
+                          const input = e.currentTarget.querySelector('input');
+                          if (input) {
+                            try {
+                              input.showPicker();
+                            } catch (err) {
+                              input.focus();
+                            }
                           }
-                        }
-                      }}
-                    >
+                        }}
+                      >
+                        <input
+                          type="date"
+                          className="elegant-input w-full block cursor-pointer text-left"
+                          value={formData.date}
+                          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                          style={{ colorScheme: 'dark' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="elegant-label text-xs">備註 (Notes)</label>
                       <input
-                        type="date"
-                        className="elegant-input w-full block cursor-pointer text-left"
-                        value={formData.date}
-                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                        style={{ colorScheme: 'dark' }}
+                        type="text"
+                        className="elegant-input w-full h-[42px] text-sm"
+                        placeholder="e.g. 分批買入, 突破買入..."
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                       />
                     </div>
                   </div>
@@ -803,7 +816,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 setEditingTxId(null);
-                                setFormData(prev => ({ ...prev, ticker: '', name: '', unitPrice: 0, quantity: 1000 }));
+                                setFormData(prev => ({ ...prev, ticker: '', name: '', unitPrice: 0, quantity: 1000, notes: '' }));
                               }}
                               className="w-1/3 bg-[var(--accent)] text-white h-[48px] md:h-[56px] rounded-xl font-black text-sm md:text-base hover:opacity-90 active:scale-[0.95] transition-all flex items-center justify-center gap-2"
                             >
@@ -952,11 +965,11 @@ export default function App() {
                       const curPrice = marketData.prices[ticker] || latestWeekly || h.avgCost;
                       const unrealizedPL = (curPrice - h.avgCost) * h.currentShares;
                       const totalPL = unrealizedPL + (h.realizedPL || 0);
-                      
+
                       // Calculate ROI: If active, use unrealized ROI. If closed, use realized profit vs total historically invested (approx)
                       // For simplicity, let's show the ROI based on active avgCost if available, otherwise just total profit.
-                      const roi = h.avgCost > 0 
-                        ? ((curPrice / h.avgCost) - 1) * 100 
+                      const roi = h.avgCost > 0
+                        ? ((curPrice / h.avgCost) - 1) * 100
                         : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0); // Placeholder for closed positions
                       const displayName = txs.length > 0 ? txs[0].name : h.name;
 
@@ -1106,24 +1119,24 @@ export default function App() {
 
                             {/* Weekly Price Input Section */}
                             <div className="bg-[var(--bg-tertiary)] p-3 md:p-6 border-b border-[var(--border)] space-y-4">
-                               <div className="flex items-center justify-between">
-                                 <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
-                                 <div className="flex gap-2">
-                                   <input
-                                     type="file"
-                                     ref={weeklyFileInputRef}
-                                     onChange={(e) => handleWeeklyCsvImport(e, ticker)}
-                                     accept=".csv"
-                                     className="hidden"
-                                   />
-                                   <button
-                                     onClick={() => weeklyFileInputRef.current?.click()}
-                                     className="flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border)] text-[8px] font-bold text-[var(--text-dim)] hover:text-[var(--text-main)] transition-all uppercase tracking-widest"
-                                   >
-                                     <FileUp size={10} /> 匯入 CSV
-                                   </button>
-                                 </div>
-                               </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="file"
+                                    ref={weeklyFileInputRef}
+                                    onChange={(e) => handleWeeklyCsvImport(e, ticker)}
+                                    accept=".csv"
+                                    className="hidden"
+                                  />
+                                  <button
+                                    onClick={() => weeklyFileInputRef.current?.click()}
+                                    className="flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border)] text-[8px] font-bold text-[var(--text-dim)] hover:text-[var(--text-main)] transition-all uppercase tracking-widest"
+                                  >
+                                    <FileUp size={10} /> 匯入 CSV
+                                  </button>
+                                </div>
+                              </div>
                               <div className="flex flex-col gap-2">
                                 <div className="flex gap-2">
                                   <input
@@ -1158,7 +1171,7 @@ export default function App() {
                                     const pastTxs = txs.filter(t => t.date <= wp.date);
                                     let historicalShares = 0;
                                     let historicalCost = 0;
-                                    
+
                                     pastTxs.forEach(t => {
                                       if (t.direction === 'BUY') {
                                         historicalShares += t.quantity;
@@ -1169,7 +1182,7 @@ export default function App() {
                                         historicalCost -= (currentAvg * t.quantity);
                                       }
                                     });
-                                    
+
                                     const historicalAvgCost = historicalShares > 0 ? historicalCost / historicalShares : 0;
                                     const historicalPL = (wp.price - historicalAvgCost) * historicalShares;
                                     const historicalRoi = historicalAvgCost > 0 ? ((wp.price / historicalAvgCost) - 1) * 100 : 0;
@@ -1251,7 +1264,11 @@ export default function App() {
           )}
 
           {activeView === 'C' && (
-            <RealizedView realizedList={appData.realizedList} onImport={handleHistoryCsvImport} />
+            <RealizedView 
+              realizedList={appData.realizedList} 
+              onImport={handleHistoryCsvImport} 
+              onUpdateNotes={handleUpdateTransactionNotes}
+            />
           )}
         </main>
       </div>

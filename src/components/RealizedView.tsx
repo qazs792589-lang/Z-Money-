@@ -1,15 +1,29 @@
-import React from 'react';
-import { History, FileUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { History, FileUp, Edit2, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { RealizedProfit } from '../types';
 
 interface RealizedViewProps {
   realizedList: RealizedProfit[];
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUpdateNotes: (txId: string, notes: string) => void;
 }
 
-export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImport }) => {
+export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImport, onUpdateNotes }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  const startEditing = (r: RealizedProfit) => {
+    if (!r.sellTxId) return;
+    setEditingId(r.sellTxId);
+    setEditValue(r.notes || '');
+  };
+
+  const saveEdit = (txId: string) => {
+    onUpdateNotes(txId, editValue);
+    setEditingId(null);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -41,24 +55,25 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImpo
             篩選：僅顯示已實現
           </div>
         </div>
-        <div className="overflow-x-auto smooth-scroll-x">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto custom-scrollbar pb-4">
+          <table className="w-full text-left min-w-[1000px]">
             <thead>
               <tr className="text-[10px] text-[var(--text-main)] font-bold uppercase tracking-wider bg-[var(--bg-tertiary)]">
-                <th className="px-6 py-4 font-bold">結清日期</th>
-                <th className="px-6 py-4 font-bold">標的碼</th>
+                <th className="px-6 py-4 font-bold sticky left-0 bg-[var(--bg-tertiary)] z-10">結清日期</th>
+                <th className="px-6 py-4 font-bold sticky left-[100px] bg-[var(--bg-tertiary)] z-10">標的碼</th>
                 <th className="px-6 py-4 font-bold">成交股數</th>
                 <th className="px-6 py-4 font-bold">成本均價</th>
                 <th className="px-6 py-4 font-bold">賣出價</th>
                 <th className="px-6 py-4 font-bold">淨損益</th>
-                <th className="px-6 py-4 font-bold text-right">ROI %</th>
+                <th className="px-6 py-4 font-bold">ROI %</th>
+                <th className="px-6 py-4 font-bold text-right">備註 (點擊可編輯)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               {realizedList.map((r, i) => (
                 <tr key={i} className="hover:bg-[var(--bg-tertiary)] transition-colors group">
-                  <td className="px-6 py-4 font-mono text-xs">{r.closeDate}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 font-mono text-xs sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10">{r.closeDate}</td>
+                  <td className="px-6 py-4 sticky left-[100px] bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10">
                     <div className="flex flex-col">
                       <span className="text-xs font-bold">{r.name}</span>
                       <span className="text-[9px] text-[var(--text-dim)] font-mono">{r.ticker}</span>
@@ -70,7 +85,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImpo
                   <td className={cn("px-6 py-4 font-mono text-xs font-bold", r.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                     {r.profit >= 0 ? '+' : ''}{r.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4">
                     <span className={cn(
                       "text-[10px] px-2 py-1 rounded font-bold",
                       r.roi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]"
@@ -78,11 +93,38 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImpo
                       {r.roi >= 0 ? '+' : ''}{r.roi.toFixed(2)}%
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    {editingId === r.sellTxId ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          autoFocus
+                          className="bg-[var(--bg-primary)] border border-[var(--accent)] rounded px-2 py-1 text-[10px] text-[var(--text-main)] w-full max-w-[150px]"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && r.sellTxId && saveEdit(r.sellTxId)}
+                          onBlur={() => r.sellTxId && saveEdit(r.sellTxId)}
+                        />
+                        <button onClick={() => r.sellTxId && saveEdit(r.sellTxId)} className="text-[var(--success)]">
+                          <Check size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => startEditing(r)}
+                        className="flex items-center justify-end gap-2 group/note cursor-pointer hover:text-[var(--accent)] transition-colors"
+                      >
+                        <span className="text-[10px] text-[var(--text-dim)] italic max-w-[200px] truncate group-hover/note:text-[var(--accent)]">
+                          {r.notes || '點擊新增備註'}
+                        </span>
+                        <Edit2 size={10} className="opacity-0 group-hover/note:opacity-100 transition-opacity" />
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
               {realizedList.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-[var(--text-dim)] italic text-sm">
+                  <td colSpan={8} className="px-6 py-12 text-center text-[var(--text-dim)] italic text-sm">
                     目前尚無已結清的交易紀錄。
                   </td>
                 </tr>

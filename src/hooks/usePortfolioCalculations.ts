@@ -52,7 +52,9 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
           profit: profit,
           roi: costBasis > 0 ? (profit / costBasis) * 100 : 0,
           daysHeld: 0,
-          closeDate: tx.date
+          closeDate: tx.date,
+          notes: tx.notes,
+          sellTxId: tx.id
         });
 
         h.currentShares -= sellQty;

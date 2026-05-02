@@ -8,11 +8,12 @@ export interface Transaction {
   name: string;
   direction: TransactionDirection;
   quantity: number;
-  unitPrice: number; // For DIVIDEND, this is dividend per share
+  unitPrice: number; 
   category: TransactionCategory;
   fee: number;
   tax: number;
-  totalAmount: number; // For BUY: positive cost, for SELL: negative (cash in), for DIVIDEND: negative (cash in)
+  totalAmount: number; 
+  notes?: string;
 }
 
 export interface Config {
@@ -43,6 +44,8 @@ export interface RealizedProfit {
   roi: number;
   daysHeld: number;
   closeDate: string;
+  notes?: string;
+  sellTxId?: string;
 }
 
 export interface WeeklyPrice {
