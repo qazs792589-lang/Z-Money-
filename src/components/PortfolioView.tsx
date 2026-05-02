@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LayoutDashboard, Activity, Edit2 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -252,15 +252,26 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
           {/* Page 2: Trend & Matrix */}
           <div className="w-full shrink-0 px-1 space-y-10">
-            <div className="elegant-card p-6 relative">
-              <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 mb-8 uppercase tracking-[0.2em] text-[var(--accent)]">
-                <Activity size={12} /> Valuation Trend
-              </h3>
-              <div className="h-[320px]">
+            <div className="elegant-card p-0 overflow-hidden relative">
+              <div className="p-6">
+                <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 uppercase tracking-[0.2em] text-[var(--accent)]">
+                  <Activity size={12} /> Valuation Trend
+                </h3>
+              </div>
+              <div className="h-[320px] relative group">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
-                    <XAxis dataKey="name" stroke="var(--text-dim)" fontSize={9} axisLine={false} tickLine={false} tickMargin={5} />
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="var(--text-dim)" 
+                      fontSize={9} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tickMargin={10}
+                      minTickGap={30}
+                      tickFormatter={(str) => str.split('-').slice(1).join('/')}
+                    />
                     <YAxis
                       yAxisId="left"
                       stroke="var(--text-dim)"
@@ -269,6 +280,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       tickLine={false}
                       domain={['auto', 'auto']}
                       tickMargin={5}
+                      tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
                     />
                     <YAxis
                       yAxisId="right"
@@ -279,23 +291,38 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       tickLine={false}
                       domain={['auto', 'auto']}
                       tickMargin={5}
+                      tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
                     />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
+                          // Find the original data point for accurate hover values
+                          const originalPoint = chartData.find(d => d.name === label) || payload[0].payload;
                           return (
                             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-3 rounded-xl shadow-2xl backdrop-blur-md">
                               <div className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] pb-2 mb-2">{label?.toString().replace(/-/g, '/')}</div>
                               <div className="space-y-1.5">
-                                {payload.map((entry: any, index: number) => (
-                                  <div key={index} className="flex items-center justify-between gap-8">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                                      <span className="text-[11px] font-bold text-[var(--text-dim)]">{entry.name}</span>
-                                    </div>
-                                    <span className="text-xs font-mono font-black text-[var(--text-main)]">${Number(entry.value).toLocaleString()}</span>
+                                <div className="flex items-center justify-between gap-8">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                                    <span className="text-[11px] font-bold text-[var(--text-dim)]">當前總市值</span>
                                   </div>
-                                ))}
+                                  <span className="text-xs font-mono font-black text-[var(--text-main)]">${originalPoint.value.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-8">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--danger)]" />
+                                    <span className="text-[11px] font-bold text-[var(--text-dim)]">投入總成本</span>
+                                  </div>
+                                  <span className="text-xs font-mono font-black text-[var(--text-main)]">${originalPoint.cost.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-8">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                                    <span className="text-[11px] font-bold text-[var(--text-dim)]">帳面總損益</span>
+                                  </div>
+                                  <span className="text-xs font-mono font-black text-[var(--text-main)]">${originalPoint.profit.toLocaleString()}</span>
+                                </div>
                               </div>
                             </div>
                           );
@@ -303,10 +330,61 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         return null;
                       }}
                     />
-                    <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '9px', fontWeight: 'bold' }} />
-                    <Line yAxisId="left" type="monotone" name="當前總市值" dataKey="value" stroke="var(--accent)" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                    <Line yAxisId="left" type="monotone" name="投入總成本" dataKey="cost" stroke="var(--danger)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                    <Line yAxisId="right" type="monotone" name="帳面總損益" dataKey="profit" stroke="var(--success)" strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                    <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '9px', fontWeight: 'bold', opacity: 0.6 }} />
+                    
+                    {/* Visual smoothed lines using a 5-point moving average for a "Z-GYM" look */}
+                    <Line 
+                      yAxisId="left" 
+                      type="monotone" 
+                      name="當前總市值" 
+                      dataKey={(d) => {
+                        const idx = chartData.indexOf(d);
+                        const windowSize = 5;
+                        const start = Math.max(0, idx - windowSize);
+                        const end = Math.min(chartData.length, idx + 1);
+                        const subset = chartData.slice(start, end);
+                        return subset.reduce((acc, curr) => acc + curr.value, 0) / subset.length;
+                      }}
+                      stroke="var(--accent)" 
+                      strokeWidth={3} 
+                      dot={false} 
+                      activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--accent)' }}
+                    />
+                    <Line 
+                      yAxisId="left" 
+                      type="monotone" 
+                      name="投入總成本" 
+                      dataKey={(d) => {
+                        const idx = chartData.indexOf(d);
+                        const windowSize = 5;
+                        const start = Math.max(0, idx - windowSize);
+                        const end = Math.min(chartData.length, idx + 1);
+                        const subset = chartData.slice(start, end);
+                        return subset.reduce((acc, curr) => acc + curr.cost, 0) / subset.length;
+                      }}
+                      stroke="var(--danger)" 
+                      strokeWidth={2} 
+                      strokeDasharray="4 4" 
+                      dot={false} 
+                      activeDot={false}
+                    />
+                    <Line 
+                      yAxisId="right" 
+                      type="monotone" 
+                      name="帳面總損益" 
+                      dataKey={(d) => {
+                        const idx = chartData.indexOf(d);
+                        const windowSize = 5;
+                        const start = Math.max(0, idx - windowSize);
+                        const end = Math.min(chartData.length, idx + 1);
+                        const subset = chartData.slice(start, end);
+                        return subset.reduce((acc, curr) => acc + curr.profit, 0) / subset.length;
+                      }}
+                      stroke="var(--success)" 
+                      strokeWidth={2} 
+                      dot={false} 
+                      activeDot={false}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
