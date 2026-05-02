@@ -933,29 +933,31 @@ export default function App() {
                                    </button>
                                  </div>
                                </div>
-                              <div className="flex gap-2">
-                                <input
-                                  type="date"
-                                  className="elegant-input flex-1 px-2 py-1.5 text-xs text-left"
-                                  value={formData.date}
-                                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                />
-                                <input
-                                  type="number"
-                                  className="elegant-input flex-1 px-2 py-1.5 text-xs"
-                                  placeholder="Price"
-                                  value={formData.unitPrice || ''}
-                                  onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
-                                />
+                              <div className="flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                  <input
+                                    type="date"
+                                    className="elegant-input flex-[1.4] px-2 py-2 text-xs text-left"
+                                    value={formData.date}
+                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                  />
+                                  <input
+                                    type="number"
+                                    className="elegant-input flex-1 px-2 py-2 text-xs"
+                                    placeholder="Price"
+                                    value={formData.unitPrice || ''}
+                                    onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                                  />
+                                </div>
                                 <button
-                                  className="bg-[var(--accent)] text-[var(--bg-primary)] px-3 py-1.5 rounded-lg font-bold text-xs"
+                                  className="w-full bg-[var(--accent)] text-[var(--bg-primary)] py-2.5 rounded-lg font-bold text-xs shadow-lg shadow-[var(--accent-glow)] active:scale-[0.98] transition-all"
                                   onClick={() => {
                                     const others = weeklyPrices.filter(p => !(p.date === formData.date && p.ticker === ticker));
                                     const newPrices = [...others, { date: formData.date, ticker, price: formData.unitPrice }]
                                       .sort((a, b) => a.date.localeCompare(b.date));
                                     setWeeklyPrices(newPrices);
                                   }}
-                                >新增</button>
+                                >新增紀錄</button>
                               </div>
                               <div className="space-y-2 mt-4 max-h-40 overflow-y-auto">
                                 {weeklyPrices.filter(wp => wp.ticker === ticker)
