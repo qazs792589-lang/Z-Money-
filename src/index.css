@@ -89,7 +89,7 @@
   }
 
   .elegant-input {
-    @apply bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-main)] placeholder:text-[var(--text-dim)] p-2.5 rounded font-mono w-full focus:outline-none focus:border-[var(--accent)] text-left;
+    @apply bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-main)] placeholder:text-[var(--text-dim)] p-2 rounded font-mono w-full focus:outline-none focus:border-[var(--accent)] text-left;
     -webkit-appearance: none;
   }
 

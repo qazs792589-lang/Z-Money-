@@ -841,22 +841,22 @@ export default function App() {
                                         </div>
 
                                         {/* Foreground Content */}
-                                        <motion.div
-                                          drag="x"
-                                          dragConstraints={{ left: 0, right: 0 }}
-                                          dragElastic={0.4}
-                                          dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
-                                          onDragEnd={(_, info) => {
-                                            if (Math.abs(info.offset.x) > 80) {
-                                              handleDeleteTransaction(tx.id);
-                                            }
-                                          }}
-                                          className="relative bg-[var(--bg-secondary)] px-6 py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select"
-                                          style={{ touchAction: 'pan-y' }}
-                                        >
-                                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                                          <motion.div
+                                            drag="x"
+                                            dragConstraints={{ left: 0, right: 0 }}
+                                            dragElastic={0.4}
+                                            dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
+                                            onDragEnd={(_, info) => {
+                                              if (Math.abs(info.offset.x) > 80) {
+                                                handleDeleteTransaction(tx.id);
+                                              }
+                                            }}
+                                            className="relative bg-[var(--bg-secondary)] px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select"
+                                            style={{ touchAction: 'pan-y' }}
+                                          >
+                                          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
                                             <div className={cn(
-                                              "px-2 py-0.5 rounded text-[8px] font-bold uppercase shrink-0",
+                                              "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase shrink-0",
                                               tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
                                                 tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-orange-500/20 text-orange-500"
                                             )}>
@@ -889,7 +889,7 @@ export default function App() {
                                               </p>
                                             </div>
                                           </div>
-                                          <div className="text-right shrink-0 flex flex-col justify-center ml-4">
+                                          <div className="text-right shrink-0 flex flex-col justify-center ml-2">
                                             <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 mb-0.5 leading-none">
                                               交易總額
                                             </p>
@@ -914,7 +914,7 @@ export default function App() {
                             </div>
 
                             {/* Weekly Price Input Section */}
-                            <div className="bg-[var(--bg-tertiary)] p-6 border-b border-[var(--border)] space-y-4">
+                            <div className="bg-[var(--bg-tertiary)] p-3 md:p-6 border-b border-[var(--border)] space-y-4">
                                <div className="flex items-center justify-between">
                                  <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
                                  <div className="flex gap-2">
@@ -933,22 +933,22 @@ export default function App() {
                                    </button>
                                  </div>
                                </div>
-                              <div className="flex gap-4">
+                              <div className="flex gap-2">
                                 <input
                                   type="date"
-                                  className="elegant-input flex-1"
+                                  className="elegant-input flex-1 px-2 py-1.5 text-xs text-left"
                                   value={formData.date}
                                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                 />
                                 <input
                                   type="number"
-                                  className="elegant-input flex-1"
+                                  className="elegant-input flex-1 px-2 py-1.5 text-xs"
                                   placeholder="Price"
                                   value={formData.unitPrice || ''}
                                   onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
                                 />
                                 <button
-                                  className="bg-[var(--accent)] text-[var(--bg-primary)] px-4 py-2 rounded-lg font-bold"
+                                  className="bg-[var(--accent)] text-[var(--bg-primary)] px-3 py-1.5 rounded-lg font-bold text-xs"
                                   onClick={() => {
                                     const others = weeklyPrices.filter(p => !(p.date === formData.date && p.ticker === ticker));
                                     const newPrices = [...others, { date: formData.date, ticker, price: formData.unitPrice }]
