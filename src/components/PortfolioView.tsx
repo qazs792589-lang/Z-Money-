@@ -119,23 +119,25 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
       </div>
 
       {/* 3. Swiper Content */}
-      <div className="relative overflow-visible cursor-grab active:cursor-grabbing">
+      <div className="relative overflow-visible cursor-grab active:cursor-grabbing" style={{ touchAction: 'pan-y' }}>
         <motion.div
           className="flex w-full"
           animate={{ x: `-${page * 100}%` }}
-          transition={{ type: "spring", stiffness: 260, damping: 26 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
           drag="x"
+          dragDirectionLock
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.6}
+          dragElastic={0.2}
           onDragEnd={(_, info) => {
-            const threshold = 100;
-            const velocityThreshold = 500;
+            const threshold = 50;
+            const velocityThreshold = 200;
             if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
               if (page === 0) paginate(1);
             } else if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
               if (page === 1) paginate(0);
             }
           }}
+          style={{ touchAction: 'pan-y' }}
         >
           {/* Page 1: Allocation & Holdings */}
           <div className="w-full shrink-0 px-1 space-y-10">
