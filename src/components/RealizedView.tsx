@@ -1,18 +1,38 @@
 import React from 'react';
-import { History } from 'lucide-react';
+import { History, FileUp } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { RealizedProfit } from '../types';
 
 interface RealizedViewProps {
   realizedList: RealizedProfit[];
+  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList }) => {
+export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList, onImport }) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
-      <h2 className="text-2xl font-black flex items-center gap-3">
-        <History className="text-[var(--accent)]" /> 已實現損益
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-black flex items-center gap-3">
+          <History className="text-[var(--accent)]" /> 已實現損益
+        </h2>
+        <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={onImport}
+            accept=".csv"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-[10px] font-black text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all uppercase tracking-widest"
+          >
+            <FileUp size={14} /> 匯入歷史 CSV
+          </button>
+        </div>
+      </div>
 
       <div className="elegant-card overflow-hidden">
         <div className="bg-[var(--bg-tertiary)] px-6 py-4 border-b border-[var(--border)] flex justify-between items-center">

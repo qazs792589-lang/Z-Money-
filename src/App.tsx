@@ -198,6 +198,89 @@ export default function App() {
     reader.readAsText(file);
   };
 
+  const handleHistoryCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const rawLines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (rawLines.length < 2) return;
+
+        let headerIdx = -1;
+        for (let i = 0; i < rawLines.length; i++) {
+          if (rawLines[i].includes('公司') && rawLines[i].includes('日期')) {
+            headerIdx = i;
+            break;
+          }
+        }
+
+        if (headerIdx === -1) {
+          alert('CSV 格式錯誤，找不到「公司」與「日期」標題。');
+          return;
+        }
+
+        const newTransactions: Transaction[] = [];
+        let lastTicker = '';
+        const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+
+        for (let i = headerIdx + 1; i < rawLines.length; i++) {
+          const cols = rawLines[i].split(csvRegex).map(c => c.trim().replace(/"/g, ''));
+          if (cols.length < 5) continue;
+
+          let ticker = cols[0];
+          if (!ticker) ticker = lastTicker;
+          else lastTicker = ticker;
+
+          if (!ticker) continue;
+
+          const date = cols[1];
+          if (!date) continue;
+
+          const unitPrice = parseFloat(cols[2].replace(/,/g, '')) || 0;
+          const qtyRaw = parseFloat(cols[3].replace(/,/g, '')) || 0;
+          const dividend = parseFloat(cols[4].replace(/,/g, '')) || 0;
+          const fee = (parseFloat(cols[6].replace(/,/g, '')) || 0) + (parseFloat(cols[7].replace(/,/g, '')) || 0);
+          const tax = parseFloat(cols[8].replace(/,/g, '')) || 0;
+
+          if (dividend > 0) {
+            newTransactions.push({
+              id: Math.random().toString(36).substr(2, 9),
+              date, ticker, name: ticker,
+              direction: 'DIVIDEND', quantity: 1, unitPrice: dividend,
+              category: 'Stock', fee: 0, tax: 0, totalAmount: dividend
+            });
+          }
+
+          if (qtyRaw !== 0) {
+            const direction = qtyRaw < 0 ? 'BUY' : 'SELL';
+            const qty = Math.abs(qtyRaw);
+            const totalAmount = direction === 'BUY' ? (qty * unitPrice) + fee + tax : (qty * unitPrice) - fee - tax;
+
+            newTransactions.push({
+              id: Math.random().toString(36).substr(2, 9),
+              date, ticker, name: ticker,
+              direction, quantity: qty, unitPrice,
+              category: 'Stock', fee, tax, totalAmount
+            });
+          }
+        }
+
+        if (newTransactions.length > 0) {
+          setTransactions(prev => [...prev, ...newTransactions]);
+          alert(`成功匯入 ${newTransactions.length} 筆紀錄！`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('匯入失敗');
+      }
+      if (e.target) e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   // Derived Calculations & Logic extracted to custom hooks
   const { formData, setFormData, preview } = useTransactionForm(configs);
   const { appData, stats } = usePortfolioCalculations(transactions, marketData, weeklyPrices);
@@ -1059,7 +1142,7 @@ export default function App() {
           )}
 
           {activeView === 'C' && (
-            <RealizedView realizedList={appData.realizedList} />
+            <RealizedView realizedList={appData.realizedList} onImport={handleHistoryCsvImport} />
           )}
         </main>
       </div>
