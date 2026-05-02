@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useDragControls } from 'motion/react';
 import {
   Plus,
   History,
@@ -66,6 +67,66 @@ import { PortfolioView } from './components/PortfolioView';
 import { RealizedView } from './components/RealizedView';
 import { LockScreen } from './components/LockScreen';
 import { Shield, Lock as LockIcon, Unlock as UnlockIcon, AlertCircle } from 'lucide-react';
+
+function DraggableTickerPill({ 
+  ticker, 
+  name, 
+  isZero, 
+  onRename, 
+  onDelete 
+}: { 
+  ticker: string, 
+  name: string, 
+  isZero: boolean, 
+  onRename: (t: string) => void, 
+  onDelete: (t: string) => void 
+}) {
+  const dragControls = useDragControls();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+  return (
+    <Reorder.Item
+      key={ticker}
+      value={ticker}
+      dragListener={false}
+      dragControls={dragControls}
+      whileDrag={{
+        scale: 1.05,
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+        zIndex: 50
+      }}
+      transition={{ type: "spring", stiffness: 600, damping: 40 }}
+      onPointerDown={() => {
+        longPressTimer.current = setTimeout(() => onRename(ticker), 600);
+      }}
+      onPointerUp={() => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      }}
+      onPointerLeave={() => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      }}
+      className={cn(
+        "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap border shadow-sm flex items-center gap-2 transition-opacity hardware-accel no-select",
+        isZero ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-60" : "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)]"
+      )}
+    >
+      <span 
+        className="opacity-60 text-[10px] cursor-grab active:cursor-grabbing p-1 -ml-2"
+        onPointerDown={(e) => dragControls.start(e)}
+      >
+        ⠿
+      </span>
+      {name}
+      <button
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onDelete(ticker); }}
+        className="ml-1 p-0.5 hover:bg-black/20 rounded-full transition-colors"
+      >
+        <X size={10} />
+      </button>
+    </Reorder.Item>
+  );
+}
 
 export default function App() {
   const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('A');
@@ -297,6 +358,14 @@ export default function App() {
 
   const handleUpdateTransactionNotes = (txId: string, notes: string) => {
     setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, notes } : tx));
+  };
+
+  const handleRenameTicker = (ticker: string) => {
+    const oldName = appData.stockGroups[ticker]?.[0]?.name || ticker;
+    const newName = window.prompt(`將 「${oldName}」 重命名為：`, oldName);
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+      setTransactions(prev => prev.map(tx => tx.ticker === ticker ? { ...tx, name: newName.trim() } : tx));
+    }
   };
 
   // Derived Calculations & Logic extracted to custom hooks
@@ -889,36 +958,16 @@ export default function App() {
                             className="flex items-center gap-2"
                             style={{ touchAction: 'pan-y' }}
                           >
-                            {sortedTickers.map(ticker => {
-                              const isZero = (appData.holdingsMap[ticker]?.currentShares || 0) <= 0;
-                              return (
-                                <Reorder.Item
-                                  key={ticker}
-                                  value={ticker}
-                                  whileDrag={{
-                                    scale: 1.05,
-                                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-                                    zIndex: 50
-                                  }}
-                                  transition={{ type: "spring", stiffness: 600, damping: 40 }}
-                                  className={cn(
-                                    "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap cursor-grab active:cursor-grabbing border shadow-sm flex items-center gap-2 transition-opacity hardware-accel no-select",
-                                    isZero ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-60" : "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)]"
-                                  )}
-                                  style={{ touchAction: 'pan-y' }}
-                                >
-                                  <span className="opacity-60 text-[10px]">⠿</span>
-                                  {appData.stockGroups[ticker]?.[0]?.name || ticker}
-                                  <button
-                                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking X
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteHolding(ticker); }}
-                                    className="ml-1 p-0.5 hover:bg-black/20 rounded-full transition-colors"
-                                  >
-                                    <X size={10} />
-                                  </button>
-                                </Reorder.Item>
-                              );
-                            })}
+                            {sortedTickers.map(ticker => (
+                              <DraggableTickerPill
+                                key={ticker}
+                                ticker={ticker}
+                                name={appData.stockGroups[ticker]?.[0]?.name || ticker}
+                                isZero={(appData.holdingsMap[ticker]?.currentShares || 0) <= 0}
+                                onRename={handleRenameTicker}
+                                onDelete={handleDeleteHolding}
+                              />
+                            ))}
                           </Reorder.Group>
                         );
                       }
