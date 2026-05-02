@@ -125,7 +125,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           animate={{ x: `-${page * 100}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           drag="x"
-          dragDirectionLock
+          dragDirectionLock={true}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
           onDragEnd={(_, info) => {

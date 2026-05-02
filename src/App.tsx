@@ -532,10 +532,9 @@ export default function App() {
                         }
                       }}
                     >
-                      <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--accent)] pointer-events-none" />
                       <input
                         type="date"
-                        className="elegant-input pl-11 w-full block cursor-pointer text-left"
+                        className="elegant-input w-full block cursor-pointer text-left"
                         value={formData.date}
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         style={{ colorScheme: 'dark' }}
@@ -841,19 +840,19 @@ export default function App() {
                                         </div>
 
                                         {/* Foreground Content */}
-                                          <motion.div
-                                            drag="x"
-                                            dragConstraints={{ left: 0, right: 0 }}
-                                            dragElastic={0.4}
-                                            dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
-                                            onDragEnd={(_, info) => {
-                                              if (Math.abs(info.offset.x) > 80) {
-                                                handleDeleteTransaction(tx.id);
-                                              }
-                                            }}
-                                            className="relative bg-[var(--bg-secondary)] px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select"
-                                            style={{ touchAction: 'pan-y' }}
-                                          >
+                                        <motion.div
+                                          drag="x"
+                                          dragConstraints={{ left: 0, right: 0 }}
+                                          dragElastic={0.4}
+                                          dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
+                                          onDragEnd={(_, info) => {
+                                            if (Math.abs(info.offset.x) > 80) {
+                                              handleDeleteTransaction(tx.id);
+                                            }
+                                          }}
+                                          className="relative bg-[var(--bg-secondary)] px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select"
+                                          style={{ touchAction: 'pan-y' }}
+                                        >
                                           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
                                             <div className={cn(
                                               "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase shrink-0",
@@ -950,7 +949,7 @@ export default function App() {
                                   />
                                 </div>
                                 <button
-                                  className="w-full bg-[var(--accent)] text-[var(--bg-primary)] py-2.5 rounded-lg font-bold text-xs shadow-lg shadow-[var(--accent-glow)] active:scale-[0.98] transition-all"
+                                  className="w-full bg-[var(--accent)] text-[var(--bg-primary)] py-2.5 rounded-lg font-bold text-xs shadow-xl active:scale-[0.98] transition-all"
                                   onClick={() => {
                                     const others = weeklyPrices.filter(p => !(p.date === formData.date && p.ticker === ticker));
                                     const newPrices = [...others, { date: formData.date, ticker, price: formData.unitPrice }]
