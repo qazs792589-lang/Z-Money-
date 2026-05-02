@@ -800,7 +800,7 @@ export default function App() {
                                     <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${curPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                   </div>
                                   <div>
-                                    <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">平均成本</span>
+                                    <span className="text-[10px] text(--var-text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">平均成本</span>
                                     <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.avgCost.toFixed(2)}</p>
                                   </div>
                                   <div>
@@ -1038,7 +1038,7 @@ export default function App() {
                     })()
                   ) : (
                     <div className="elegant-card p-16 text-center text-[var(--text-dim)] italic border-dashed border-[var(--border)] bg-[var(--bg-secondary)]">
-                      尚未登錄任何交易明細，請於上方輸入第一筆資料。
+                      尚未登錄 any 交易明細，請於上方輸入第一筆資料。
                     </div>
                   )}
                 </div>

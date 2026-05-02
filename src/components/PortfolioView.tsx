@@ -124,20 +124,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           className="flex w-full"
           animate={{ x: `-${page * 100}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          drag="x"
-          dragDirectionLock={true}
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(_, info) => {
-            const threshold = 50;
-            const velocityThreshold = 200;
-            if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
-              if (page === 0) paginate(1);
-            } else if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
-              if (page === 1) paginate(0);
-            }
-          }}
-          style={{ touchAction: 'pan-y' }}
         >
           {/* Page 1: Allocation & Holdings */}
           <div className="w-full shrink-0 px-1 space-y-10">
@@ -339,6 +325,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
                           <th key={ticker} className="p-4 text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest border-b border-[var(--border)] text-right">{ticker}</th>
                         ))}
+                        <th className="p-4 text-[9px] font-black text-[var(--danger)] uppercase tracking-widest border-b border-[var(--border)] text-right">投入本金</th>
                         <th className="p-4 text-[9px] font-black text-[var(--accent)] uppercase tracking-widest border-b border-[var(--border)] text-right">總市值</th>
                         <th className="p-4 text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest border-b border-[var(--border)] text-right">帳面損益</th>
                       </tr>
@@ -350,6 +337,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                           {Object.keys(d.breakdown || {}).map(ticker => (
                             <td key={ticker} className="p-4 text-[11px] font-mono text-right text-[var(--text-dim)]/80">{d.breakdown[ticker] > 0 ? `$${d.breakdown[ticker].toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}</td>
                           ))}
+                          <td className="p-4 text-[11px] font-mono text-right text-[var(--danger)] font-bold">${d.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                           <td className="p-4 text-[11px] font-mono font-bold text-right text-[var(--accent)]">${d.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                           <td className={cn("p-4 text-[11px] font-mono font-black text-right", d.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>{d.profit >= 0 ? '+' : ''}{d.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                         </tr>
