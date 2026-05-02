@@ -80,16 +80,16 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="stat-box">
             <div className="stat-label">總投入本金</div>
-            <div className="stat-value text-[var(--text-main)] text-xl">${stats.totalInvested.toLocaleString()}</div>
+            <div className="stat-value text-[var(--text-main)] text-xl">${stats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
           </div>
           <div className="stat-box border-[var(--accent)]/50">
             <div className="stat-label">當前總市值</div>
-            <div className="stat-value text-[var(--accent)] text-xl">${stats.totalMarketValue.toLocaleString()}</div>
+            <div className="stat-value text-[var(--accent)] text-xl">${stats.totalMarketValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
           </div>
           <div className={cn("stat-box", stats.unrealizedPL >= 0 ? "border-[var(--success)]/50" : "border-[var(--danger)]/50")}>
             <div className="stat-label">帳面總損益</div>
             <div className={cn("stat-value text-xl", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-              {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString()}
+              {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               <span className="text-xs ml-2 opacity-60">({stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%)</span>
             </div>
           </div>
@@ -172,7 +172,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                                 <div className="space-y-1">
                                   <div className="flex justify-between gap-6">
                                     <span className="text-[11px] font-bold text-[var(--text-dim)]">市值</span>
-                                    <span className="text-xs font-mono font-black text-[var(--text-main)]">${data.value.toLocaleString()}</span>
+                                    <span className="text-xs font-mono font-black text-[var(--text-main)]">${data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between gap-6">
                                     <span className="text-[11px] font-bold text-[var(--text-dim)]">佔比</span>
@@ -236,22 +236,22 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border)]">
                         <div>
                           <span className="text-[8px] text-[var(--text-dim)] font-black uppercase mb-0.5 block opacity-50">Avg Cost</span>
-                          <span className="text-xs font-mono font-bold text-[var(--text-main)]">${h.avgCost.toFixed(1)}</span>
+                          <span className="text-xs font-mono font-bold text-[var(--text-main)]">${h.avgCost.toFixed(2)}</span>
                         </div>
                         <div className="text-right">
                           <span className="text-[8px] text-[var(--text-dim)] font-black uppercase mb-0.5 block opacity-50">Market Value</span>
-                          <span className="text-xs font-mono font-bold text-[var(--text-main)]">${(curPrice * h.currentShares).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                          <span className="text-xs font-mono font-bold text-[var(--text-main)]">${(curPrice * h.currentShares).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                         </div>
                         <div>
                           <span className="text-[8px] text-[var(--text-dim)] font-black uppercase mb-0.5 block opacity-50">Gain/Loss</span>
                           <span className={cn("text-xs font-mono font-bold", hpl >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {hpl >= 0 ? '+' : '-'}${Math.abs(hpl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {hpl >= 0 ? '+' : '-'}${Math.abs(hpl).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="text-[8px] text-[var(--text-dim)] font-black uppercase mb-0.5 block opacity-50">ROI</span>
                           <span className={cn("text-xs font-mono font-bold", hroi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {hroi >= 0 ? '+' : ''}{hroi.toFixed(1)}%
+                            {hroi >= 0 ? '+' : ''}{hroi.toFixed(2)}%
                           </span>
                         </div>
                       </div>
@@ -348,10 +348,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         <tr key={i} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors group">
                           <td className="p-4 text-[11px] font-mono text-[var(--text-dim)] sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10 border-r border-[var(--border)]/30">{d.name.replace(/-/g, '/')}</td>
                           {Object.keys(d.breakdown || {}).map(ticker => (
-                            <td key={ticker} className="p-4 text-[11px] font-mono text-right text-[var(--text-dim)]/80">{d.breakdown[ticker] > 0 ? `$${d.breakdown[ticker].toLocaleString()}` : '-'}</td>
+                            <td key={ticker} className="p-4 text-[11px] font-mono text-right text-[var(--text-dim)]/80">{d.breakdown[ticker] > 0 ? `$${d.breakdown[ticker].toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}</td>
                           ))}
-                          <td className="p-4 text-[11px] font-mono font-bold text-right text-[var(--accent)]">${d.value.toLocaleString()}</td>
-                          <td className={cn("p-4 text-[11px] font-mono font-black text-right", d.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>{d.profit >= 0 ? '+' : ''}{d.profit.toLocaleString()}</td>
+                          <td className="p-4 text-[11px] font-mono font-bold text-right text-[var(--accent)]">${d.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                          <td className={cn("p-4 text-[11px] font-mono font-black text-right", d.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>{d.profit >= 0 ? '+' : ''}{d.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -783,9 +783,9 @@ export default function App() {
                                   </div>
 
                                   <div className="text-right flex-shrink-0 mt-2 md:mt-0">
-                                    <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString()}</p>
+                                    <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                     <p className={cn("text-[10px] md:text-xs font-bold font-mono", totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                      {totalPL >= 0 ? '▲' : '▼'} ${(Math.abs(totalPL)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({roi.toFixed(1)}%)
+                                      {totalPL >= 0 ? '▲' : '▼'} ${(Math.abs(totalPL)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({roi.toFixed(2)}%)
                                     </p>
                                   </div>
                                 </div>
@@ -794,11 +794,11 @@ export default function App() {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pt-8 border-t border-[var(--border)]">
                                   <div>
                                     <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">持有股數</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">{h.currentShares.toLocaleString()}</p>
+                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">{h.currentShares.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                   </div>
                                   <div>
                                     <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">目前市價</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${curPrice}</p>
+                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${curPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                   </div>
                                   <div>
                                     <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">平均成本</span>
@@ -806,7 +806,7 @@ export default function App() {
                                   </div>
                                   <div>
                                     <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">總投入本金</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                   </div>
                                 </div>
                               </div>
@@ -883,9 +883,9 @@ export default function App() {
                                                 </div>
                                               </div>
                                               <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold truncate leading-none">
-                                                <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString()} 股
+                                                <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
                                                 <span className="mx-2 opacity-30">|</span>
-                                                <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString()}
+                                                <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                               </p>
                                             </div>
                                           </div>
@@ -896,7 +896,7 @@ export default function App() {
                                             <p className={cn(
                                               "text-sm md:text-base font-mono font-black leading-none mt-1",
                                               tx.direction === 'BUY' ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
-                                            )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString()}</p>
+                                            )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                           </div>
                                         </motion.div>
                                       </motion.div>
@@ -986,20 +986,20 @@ export default function App() {
                                         <div className="flex flex-col gap-1 flex-1">
                                           <div className="flex items-center gap-3">
                                             <span className="opacity-50 text-[10px]">{wp.date}</span>
-                                            <span className="font-bold text-[var(--accent)]">${wp.price.toLocaleString()}</span>
+                                            <span className="font-bold text-[var(--accent)]">${wp.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                             {historicalShares > 0 && (
                                               <span className="text-[9px] px-1.5 py-0.5 bg-[var(--bg-tertiary)] rounded text-[var(--text-dim)]">
-                                                {historicalShares.toLocaleString()} 股
+                                                {historicalShares.toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
                                               </span>
                                             )}
                                           </div>
                                           {historicalShares > 0 && (
                                             <div className="flex items-center gap-3 opacity-80">
                                               <span className={cn("text-[10px] font-bold", historicalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                                {historicalPL >= 0 ? '▲' : '▼'} ${Math.abs(historicalPL).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                {historicalPL >= 0 ? '▲' : '▼'} ${Math.abs(historicalPL).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                               </span>
                                               <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-sm", historicalPL >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
-                                                {historicalRoi >= 0 ? '+' : ''}{historicalRoi.toFixed(1)}%
+                                                {historicalRoi >= 0 ? '+' : ''}{historicalRoi.toFixed(2)}%
                                               </span>
                                             </div>
                                           )}

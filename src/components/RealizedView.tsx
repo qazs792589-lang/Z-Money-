@@ -48,7 +48,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ realizedList }) => {
                   <td className="px-6 py-4 font-mono text-xs text-[var(--text-dim)]">${r.buyPrice.toFixed(2)}</td>
                   <td className="px-6 py-4 font-mono text-xs">${r.sellPrice.toFixed(2)}</td>
                   <td className={cn("px-6 py-4 font-mono text-xs font-bold", r.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                    {r.profit >= 0 ? '+' : ''}{Math.floor(r.profit).toLocaleString()}
+                    {r.profit >= 0 ? '+' : ''}{r.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className={cn(
