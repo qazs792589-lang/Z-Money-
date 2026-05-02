@@ -316,32 +316,44 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <Layers className="text-[var(--accent)]" size={18} />
                 <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-dim)]">Asset History Matrix</h3>
               </div>
-              <div className="elegant-card overflow-hidden border-[var(--border)] shadow-xl p-0">
-                <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left min-w-max">
-                    <thead>
-                      <tr className="bg-[var(--bg-tertiary)] text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">
-                        <th className="px-6 py-4 border-b border-[var(--border)]">日期</th>
-                        <th className="px-6 py-4 border-b border-[var(--border)]">投入本金</th>
-                        <th className="px-6 py-4 border-b border-[var(--border)]">總市值</th>
-                        <th className="px-6 py-4 border-b border-[var(--border)] text-right">帳面損益</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {[...chartData].reverse().slice(0, 10).map((row, i) => (
-                        <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                          <td className="px-6 py-4 font-mono text-xs">{row.name}</td>
-                          <td className="px-6 py-4 font-mono text-xs text-[var(--danger)]">${row.cost.toLocaleString()}</td>
-                          <td className="px-6 py-4 font-mono text-xs text-[var(--accent)] font-bold">${row.value.toLocaleString()}</td>
-                          <td className={cn("px-6 py-4 font-mono text-xs font-black text-right", row.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {row.profit >= 0 ? '+' : ''}{row.profit.toLocaleString()}
-                          </td>
-                        </tr>
+            <div className="elegant-card p-0 overflow-hidden border-[var(--border)] shadow-xl">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left min-w-max border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--bg-tertiary)] text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">
+                      <th className="px-4 py-4 border-b border-[var(--border)] sticky left-0 bg-[var(--bg-tertiary)] z-20">日期</th>
+                      {/* Dynamic ticker columns */}
+                      {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
+                        <th key={ticker} className="px-4 py-4 border-b border-[var(--border)] text-right min-w-[100px]">{ticker}</th>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                      <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--danger)] min-w-[100px]">投入本金</th>
+                      <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--accent)] min-w-[100px]">總市值</th>
+                      <th className="px-6 py-4 border-b border-[var(--border)] text-right min-w-[120px]">帳面損益</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {[...chartData].reverse().slice(0, 15).map((row, i) => (
+                      <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors group">
+                        <td className="px-4 py-4 font-mono text-[10px] sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-secondary)] z-10 border-r border-[var(--border)]/30">
+                          {row.name.replace(/-/g, '/')}
+                        </td>
+                        {/* Dynamic ticker values */}
+                        {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
+                          <td key={ticker} className="px-4 py-4 font-mono text-[10px] text-right text-[var(--text-dim)]/70">
+                            {row.breakdown?.[ticker] > 0 ? `$${row.breakdown[ticker].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+                          </td>
+                        ))}
+                        <td className="px-4 py-4 font-mono text-[10px] text-right text-[var(--danger)]/80">${row.cost.toLocaleString()}</td>
+                        <td className="px-4 py-4 font-mono text-[10px] text-right text-[var(--accent)] font-bold">${row.value.toLocaleString()}</td>
+                        <td className={cn("px-6 py-4 font-mono text-[10px] font-black text-right", row.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                          {row.profit >= 0 ? '+' : ''}{row.profit.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
             </div>
           </div>
         </motion.div>
