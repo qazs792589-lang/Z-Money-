@@ -376,14 +376,6 @@ export default function App() {
     setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, notes } : tx));
   };
 
-  const handleRenameTicker = (ticker: string) => {
-    const oldName = appData.stockGroups[ticker]?.[0]?.name || ticker;
-    const newName = window.prompt(`將 「${oldName}」 重命名為：`, oldName);
-    if (newName && newName.trim() && newName.trim() !== oldName) {
-      setTransactions(prev => prev.map(tx => tx.ticker === ticker ? { ...tx, name: newName.trim() } : tx));
-    }
-  };
-
   // Derived Calculations & Logic extracted to custom hooks
   const { formData, setFormData, preview } = useTransactionForm(configs);
   const { appData, stats } = usePortfolioCalculations(transactions, marketData, weeklyPrices);
@@ -528,6 +520,31 @@ export default function App() {
       quantity: 1000,
       notes: ''
     }));
+  };
+
+  const handleRenameTicker = (oldTicker: string) => {
+    const groupTxs = appData.stockGroups[oldTicker] || [];
+    const currentName = groupTxs.length > 0 ? groupTxs[0].name : oldTicker;
+    
+    const newTicker = window.prompt(`正在修改「${currentName}」的代號\n請輸入新的代號 (ID):`, oldTicker);
+    if (!newTicker || newTicker === oldTicker) return;
+
+    const newName = window.prompt(`正在修改「${newTicker}」的顯示名稱\n請輸入新的名稱:`, currentName);
+    if (!newName) return;
+
+    if (window.confirm(`確定要將「${oldTicker} | ${currentName}」更名為「${newTicker} | ${newName}」嗎？\n這將更新 ${groupTxs.length} 筆交易紀錄。`)) {
+      setTransactions(prev => prev.map(tx => 
+        tx.ticker === oldTicker 
+          ? { ...tx, ticker: newTicker, name: newName } 
+          : tx
+      ));
+      setSelectedTicker(newTicker);
+      
+      // Update order if exists
+      if (tickerOrder.includes(oldTicker)) {
+        setTickerOrder(prev => prev.map(t => t === oldTicker ? newTicker : t));
+      }
+    }
   };
 
   const handleEditTx = (tx: Transaction) => {
@@ -1076,9 +1093,21 @@ export default function App() {
                               <div className="p-4 md:p-8 bg-[var(--bg-secondary)] flex flex-col justify-center">
                                 <div className="flex flex-row items-end justify-between gap-2 md:gap-6 mb-4 md:mb-6">
                                   <div className="flex flex-col min-w-0 flex-shrink">
-                                    <h5 className="text-xl md:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tighter mb-1 md:mb-2 truncate">{displayName}</h5>
+                                    <h5 
+                                      onClick={() => handleRenameTicker(ticker)}
+                                      className="text-xl md:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tighter mb-1 md:mb-2 truncate cursor-pointer hover:text-[var(--accent)] transition-colors"
+                                      title="點擊修改名稱或代號"
+                                    >
+                                      {displayName}
+                                    </h5>
                                     <div className="flex items-center gap-1 md:gap-2">
-                                      <span className="px-1.5 py-0.5 md:px-2 md:py-1 bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent)] rounded text-[9px] md:text-xs font-mono font-bold tracking-widest leading-none">{ticker}</span>
+                                      <span 
+                                        onClick={() => handleRenameTicker(ticker)}
+                                        className="px-1.5 py-0.5 md:px-2 md:py-1 bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent)] rounded text-[9px] md:text-xs font-mono font-bold tracking-widest leading-none cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--bg-primary)] transition-all"
+                                        title="點擊修改代號"
+                                      >
+                                        {ticker}
+                                      </span>
                                     </div>
                                   </div>
 
