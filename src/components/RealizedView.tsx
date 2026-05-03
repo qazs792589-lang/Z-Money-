@@ -46,10 +46,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
 
       const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
       
-      // Calculate historical cost (all BUYS ever made for this stock)
-      const totalCost = txs.filter((t: any) => t.direction === 'BUY').reduce((sum: number, t: any) => sum + t.totalAmount, 0);
-      // Calculate historical revenue (all SELLS + DIVIDENDS)
-      const totalRevenue = txs.filter((t: any) => t.direction === 'SELL' || t.direction === 'DIVIDEND').reduce((sum: number, t: any) => sum + t.totalAmount, 0);
+      // Corrected: cumulativeCost should only reflect the cost basis of the REALIZED part
+      const totalRealizedCost = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalCost, 0);
+      const totalRevenue = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalRevenue, 0);
 
       const displayRows = [...txs].sort((a, b) => a.date.localeCompare(b.date)).map(tx => {
         const realizedInfo = realizedItems.find((r: RealizedProfit) => r.sellTxId === tx.id);
@@ -67,7 +66,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
         name: txs[0]?.name || ticker,
         transactions: displayRows,
         cumulativeProfit: totalProfit,
-        cumulativeCost: totalCost,
+        cumulativeCost: totalRealizedCost,
         cumulativeRevenue: totalRevenue,
         isHolding: currentShares > 0
       };
@@ -117,7 +116,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
                       <div className="flex items-center gap-2">
                         <span className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-tight">{group.name}</span>
                         {group.isHolding && (
-                          <span className="text-[8px] bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">持有中</span>
+                          <span className="text-[8px] bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">仍持倉中</span>
                         )}
                       </div>
                       <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold tracking-[0.2em]">{ticker}</span>

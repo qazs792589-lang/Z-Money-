@@ -86,20 +86,6 @@ export const TickerPillList: React.FC<TickerPillListProps> = ({
 
   return (
     <div className="flex items-center gap-2 w-full">
-      <button
-        onClick={() => setSelectedTicker(null)}
-        className={cn(
-          "px-5 py-2.5 rounded-full font-bold text-xs transition-all border shadow-md whitespace-nowrap shrink-0",
-          selectedTicker === null 
-            ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)]" 
-            : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:bg-[var(--bg-tertiary)]"
-        )}
-      >
-        全部明細
-      </button>
-      
-      <div className="h-5 w-[1px] bg-[var(--border)] opacity-30 mx-1 shrink-0" />
-
       <div className="flex-1 overflow-x-auto no-scrollbar py-2 -mx-2 px-2 hardware-accel">
         <Reorder.Group axis="x" values={sortedTickers} onReorder={setTickerOrder} className="flex gap-2 min-w-max">
           {sortedTickers.map(ticker => (
@@ -117,17 +103,6 @@ export const TickerPillList: React.FC<TickerPillListProps> = ({
           ))}
         </Reorder.Group>
       </div>
-
-      {!isEditing && (
-        <div className="flex items-center gap-2 shrink-0 ml-2">
-          <button onClick={onUpdateMarket} className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] transition-all shadow-sm">
-            <Activity size={16} />
-          </button>
-          <button onClick={onImportBackup} className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] transition-all shadow-sm">
-            <Database size={16} />
-          </button>
-        </div>
-      )}
     </div>
   );
 };

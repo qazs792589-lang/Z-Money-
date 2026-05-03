@@ -134,7 +134,8 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                 stroke="var(--text-dim)"
                 fontSize={10}
                 tickMargin={5}
-                minTickGap={30}
+                interval="preserveStartEnd"
+                minTickGap={20}
                 tickFormatter={(val) => {
                   if (typeof val !== 'string') return val;
                   const parts = val.split('-');
