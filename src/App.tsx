@@ -27,7 +27,9 @@ import {
   FileUp,
   Search,
   Tag,
-  Hash
+  Hash,
+  Settings as SettingsIcon,
+  Skull
 } from 'lucide-react';
 
 declare global {
@@ -703,7 +705,7 @@ export default function App() {
                 { id: 'A', label: '交易/明細', icon: Plus, desc: 'Groups & Entry' },
                 { id: 'B', label: '未實現損益', icon: LayoutDashboard, desc: 'Portfolio' },
                 { id: 'C', label: '已實現損益', icon: History, desc: 'History ROI' },
-                { id: 'D', label: '系統設定', icon: Shield, desc: 'Settings' },
+                { id: 'D', label: '系統設定', icon: SettingsIcon, desc: 'Settings' },
               ].map((nav) => (
                 <button
                   key={nav.id}
@@ -1352,7 +1354,7 @@ export default function App() {
             <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pt-4 pb-20">
               <div className="flex items-center gap-4 mb-8 px-2">
                 <div className="p-3 bg-[var(--bg-tertiary)] rounded-2xl border border-[var(--border)] text-[var(--accent)] shadow-xl">
-                  <Plus className="rotate-45" size={24} />
+                  <SettingsIcon size={24} />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-[var(--text-main)]">系統設定</h2>
@@ -1463,14 +1465,18 @@ export default function App() {
                     </div>
                     <button
                       onClick={() => {
-                        if (window.confirm('警告：這將徹底清除所有資料！確定要繼續嗎？')) {
-                          localStorage.clear();
-                          window.location.reload();
+                        if (window.confirm('【確認 1/3】警告：這將徹底清除所有資料！確定要繼續嗎？')) {
+                          if (window.confirm('【確認 2/3】資料將永久遺失，真的真的確定嗎？')) {
+                            if (window.confirm('【最後確認 3/3】點擊後所有紀錄將被刪除。您確定嗎？')) {
+                              localStorage.clear();
+                              window.location.reload();
+                            }
+                          }
                         }
                       }}
-                      className="shrink-0 bg-[var(--danger)] text-white px-4 py-2.5 rounded-lg text-xs font-black shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                      className="shrink-0 bg-[var(--danger)] text-white px-4 py-2.5 rounded-lg text-xs font-black shadow-lg shadow-red-500/20 active:scale-95 transition-all flex items-center gap-2"
                     >
-                      立刻重置
+                      <Skull size={14} /> 立刻重置
                     </button>
                   </div>
                 </div>
