@@ -430,8 +430,12 @@ export default function App() {
         });
         
         if (window.confirm(`確定要匯入這 ${newTxs.length} 筆備份資料嗎？\n這將會與現有資料合併。`)) {
-          setTransactions(prev => [...prev, ...newTxs]);
-          alert('匯入成功！');
+          setTransactions(prev => {
+            const existingIds = new Set(prev.map(tx => tx.id));
+            const uniqueNewTxs = newTxs.filter(tx => !existingIds.has(tx.id));
+            return [...prev, ...uniqueNewTxs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          });
+          alert('匯入與合併成功！');
         }
       } catch (err) {
         alert('匯入失敗，請檢查 CSV 格式是否正確。');
@@ -578,7 +582,9 @@ export default function App() {
       fee: preview.fee,
       tax: preview.tax,
       totalAmount: preview.total,
-      notes: formData.notes
+      notes: formData.notes,
+      // Preserve realized status if editing
+      isManualRealized: editingTxId ? transactions.find(t => t.id === editingTxId)?.isManualRealized : undefined
     };
 
     if (editingTxId) {
@@ -1054,7 +1060,7 @@ export default function App() {
                       const h = appData.holdingsMap[ticker] || { name: ticker, currentShares: 0, avgCost: 0, totalInvested: 0, realizedPL: 0 };
                       const latestWeekly = weeklyPrices.filter(wp => wp.ticker === ticker).sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
                       const curPrice = marketData.prices[ticker] || latestWeekly || h.avgCost;
-                      const unrealizedPL = (curPrice - h.avgCost) * h.currentShares;
+                      const unrealizedPL = ((curPrice - h.avgCost) * h.currentShares) + ((h as any).unrealizedDividends || 0);
                       const totalPL = unrealizedPL + (h.realizedPL || 0);
 
                       const roi = h.avgCost > 0
