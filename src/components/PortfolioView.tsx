@@ -253,14 +253,14 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           {/* Page 2: Trend & Matrix */}
           <div className="w-full shrink-0 px-1 space-y-10">
             <div className="elegant-card p-0 overflow-hidden relative">
-              <div className="p-6 pb-0">
+              <div className="absolute top-5 left-5 z-10">
                 <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 uppercase tracking-[0.2em] text-[var(--accent)]">
                   <Activity size={12} /> 資產價值趨勢
                 </h3>
               </div>
-              <div className="h-[320px] relative">
+              <div className="h-[320px] relative mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
+                  <ComposedChart data={chartData} margin={{ top: 15, right: 5, left: -20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
                     <XAxis 
                       dataKey="name" 
@@ -273,7 +273,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       tickFormatter={(str) => str.split('-').slice(1).join('/')}
                     />
                     <YAxis yAxisId="left" stroke="var(--text-dim)" fontSize={9} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickMargin={5} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                    <YAxis yAxisId="right" orientation="right" stroke="var(--success)" fontSize={9} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickMargin={5} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                    <YAxis yAxisId="right" orientation="right" stroke="var(--success)" fontSize={9} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickMargin={5} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} width={35} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
