@@ -14,6 +14,7 @@ export interface Transaction {
   tax: number;
   totalAmount: number; 
   notes?: string;
+  isManualRealized?: boolean;
 }
 
 export interface Config {

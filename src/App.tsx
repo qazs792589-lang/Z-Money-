@@ -29,7 +29,9 @@ import {
   Tag,
   Hash,
   Settings as SettingsIcon,
-  Skull
+  Skull,
+  CheckCircle2,
+  Archive
 } from 'lucide-react';
 
 declare global {
@@ -437,6 +439,19 @@ export default function App() {
     };
     reader.readAsText(file);
     if (e.target) e.target.value = '';
+  };
+
+  const handleToggleRealized = (id: string) => {
+    setTransactions(prev => prev.map(tx => {
+      if (tx.id === id) {
+        // Effective current state:
+        const isCurrentlyRealized = tx.isManualRealized !== undefined 
+          ? tx.isManualRealized 
+          : (tx.direction !== 'BUY');
+        return { ...tx, isManualRealized: !isCurrentlyRealized };
+      }
+      return tx;
+    }));
   };
 
   // Derived Calculations & Logic extracted to custom hooks
@@ -1128,8 +1143,10 @@ export default function App() {
                                             }
                                           }}
                                           className={cn(
-                                            "relative bg-[var(--bg-secondary)] px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select",
-                                            (tx.direction === 'SELL' || tx.direction === 'DIVIDEND') && "bg-[var(--bg-tertiary)]"
+                                            "relative px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select",
+                                            ((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY'))
+                                              ? "bg-[var(--bg-tertiary)]" 
+                                              : "bg-[var(--bg-secondary)]"
                                           )}
                                           style={{ touchAction: 'pan-y' }}
                                         >
@@ -1142,7 +1159,7 @@ export default function App() {
                                               )}>
                                                 {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
                                               </div>
-                                              {(tx.direction === 'SELL' || tx.direction === 'DIVIDEND') && (
+                                              {((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY')) && (
                                                 <span className="text-[8px] font-bold text-[var(--text-dim)] opacity-60 scale-90 whitespace-nowrap">(以實現)</span>
                                               )}
                                             </div>
@@ -1156,6 +1173,18 @@ export default function App() {
                                                     title="編輯此筆交易"
                                                   >
                                                     <Edit2 size={10} />
+                                                  </button>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); handleToggleRealized(tx.id); }}
+                                                    className={cn(
+                                                      "w-5 h-5 flex items-center justify-center rounded-full transition-all border",
+                                                      ((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY'))
+                                                        ? "bg-[var(--text-dim)] text-[var(--bg-primary)] border-transparent" 
+                                                        : "bg-transparent text-[var(--text-dim)] border-[var(--border)] opacity-30 hover:opacity-100"
+                                                    )}
+                                                    title={((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY')) ? "取消標記為已實現" : "標記為已實現 (不計入持倉)"}
+                                                  >
+                                                    <Check size={10} strokeWidth={4} />
                                                   </button>
                                                   <button
                                                     onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx.id); }}

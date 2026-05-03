@@ -15,6 +15,14 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
       if (!stockGroups[tx.ticker]) stockGroups[tx.ticker] = [];
       stockGroups[tx.ticker].push(tx);
 
+      // Effective realization state: SELL/DIVIDEND are realized by default, BUY is not.
+      // User toggle (isManualRealized) overrides the default.
+      const isTxRealized = tx.isManualRealized !== undefined 
+        ? tx.isManualRealized 
+        : (tx.direction !== 'BUY');
+
+      if (isTxRealized) return;
+
       if (!holdings[tx.ticker]) {
         holdings[tx.ticker] = { ticker: tx.ticker, name: tx.name, currentShares: 0, avgCost: 0, totalInvested: 0, realizedPL: 0, totalBuyFees: 0 };
       }
