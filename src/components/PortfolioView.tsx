@@ -347,7 +347,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {[...chartData].reverse().slice(0, 15).map((row, i) => (
+                    {[...chartData].reverse().map((row, i) => (
                       <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors group">
                         <td className="px-4 py-4 font-mono text-[10px] sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-secondary)] z-10 border-r border-[var(--border)]/30">
                           {row.name.replace(/-/g, '/')}
