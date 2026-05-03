@@ -127,7 +127,7 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={combinedData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+            <ComposedChart data={combinedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="date"
