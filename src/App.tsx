@@ -1074,8 +1074,8 @@ export default function App() {
 
                                   <div className="text-right flex-shrink-0 mt-2 md:mt-0">
                                     <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                                    <p className={cn("text-[10px] md:text-xs font-bold font-mono", totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                      {totalPL >= 0 ? '▲' : '▼'} ${(Math.abs(totalPL)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({roi.toFixed(2)}%)
+                                    <p className={cn("text-[10px] md:text-xs font-bold font-mono", unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                                      {unrealizedPL >= 0 ? '▲' : '▼'} ${(Math.abs(unrealizedPL)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({roi.toFixed(2)}%)
                                     </p>
                                   </div>
                                 </div>
@@ -1116,16 +1116,6 @@ export default function App() {
                                         exit={{ opacity: 0, scale: 0.95 }}
                                         className="relative overflow-hidden border-b border-[var(--border)] group"
                                       >
-                                        <div className="absolute inset-0 bg-[var(--danger)] flex items-center justify-between px-6">
-                                          <div className="flex items-center gap-2 text-white">
-                                            <Trash2 size={16} />
-                                            <span className="text-[8px] font-black uppercase tracking-widest">Delete</span>
-                                          </div>
-                                          <div className="flex items-center gap-2 text-white">
-                                            <span className="text-[8px] font-black uppercase tracking-widest">Delete</span>
-                                            <Trash2 size={16} />
-                                          </div>
-                                        </div>
 
                                         <motion.div
                                           drag="x"
@@ -1137,16 +1127,24 @@ export default function App() {
                                               handleDeleteTransaction(tx.id);
                                             }
                                           }}
-                                          className="relative bg-[var(--bg-secondary)] px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select"
+                                          className={cn(
+                                            "relative bg-[var(--bg-secondary)] px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select",
+                                            (tx.direction === 'SELL' || tx.direction === 'DIVIDEND') && "bg-[var(--bg-tertiary)]"
+                                          )}
                                           style={{ touchAction: 'pan-y' }}
                                         >
                                           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-                                            <div className={cn(
-                                              "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase shrink-0",
-                                              tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
-                                                tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-yellow-500/10 text-yellow-500"
-                                            )}>
-                                              {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
+                                            <div className="flex flex-col items-center gap-1 shrink-0">
+                                              <div className={cn(
+                                                "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase",
+                                                tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
+                                                  tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-yellow-500/10 text-yellow-500"
+                                              )}>
+                                                {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
+                                              </div>
+                                              {(tx.direction === 'SELL' || tx.direction === 'DIVIDEND') && (
+                                                <span className="text-[8px] font-bold text-[var(--text-dim)] opacity-60 scale-90 whitespace-nowrap">(以實現)</span>
+                                              )}
                                             </div>
                                             <div className="truncate min-w-0 flex flex-col justify-center">
                                               <div className="flex items-center gap-2 mb-1">
