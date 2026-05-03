@@ -592,6 +592,12 @@ export default function App() {
     alert('自動更新市價功能已停用，請透過下方「每週收盤價登錄」功能手動匯入 CSV 或新增紀錄。');
   };
 
+  const handleToggleUncleared = (txId: string) => {
+    setTransactions(prev => prev.map(tx => 
+      tx.id === txId ? { ...tx, isUncleared: !tx.isUncleared } : tx
+    ));
+  };
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] font-sans flex flex-col">
       <AnimatePresence>
@@ -1184,6 +1190,7 @@ export default function App() {
               appData={appData}
               onImport={handleHistoryCsvImport}
               onUpdateNotes={handleUpdateTransactionNotes}
+              onToggleUncleared={handleToggleUncleared}
             />
           )}
 

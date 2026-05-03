@@ -15,6 +15,7 @@ export interface Transaction {
   totalAmount: number; 
   notes?: string;
   isManualRealized?: boolean;
+  isUncleared?: boolean;
 }
 
 export interface Config {

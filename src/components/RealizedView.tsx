@@ -7,9 +7,10 @@ interface RealizedViewProps {
   appData: any;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUpdateNotes: (txId: string, notes: string) => void;
+  onToggleUncleared: (txId: string) => void;
 }
 
-export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, onUpdateNotes }) => {
+export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, onUpdateNotes, onToggleUncleared }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -176,8 +177,25 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
                         const isSell = tx.direction === 'SELL';
 
                         return (
-                          <tr key={tx.id} className="hover:bg-[var(--bg-secondary)]/50 transition-colors group">
-                            <td className="px-6 py-4 font-mono text-xs">{tx.date}</td>
+                          <tr key={tx.id} className={cn(
+                            "hover:bg-[var(--bg-secondary)]/50 transition-colors group",
+                            tx.isUncleared && "bg-[var(--bg-tertiary)] shadow-inner"
+                          )}>
+                            <td className="px-6 py-4 font-mono text-xs">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => onToggleUncleared(tx.id)}
+                                  className={cn(
+                                    "w-3 h-3 rounded-full border transition-all shrink-0",
+                                    tx.isUncleared 
+                                      ? "bg-[var(--accent)] border-[var(--accent)] shadow-[0_0_8px_var(--accent-glow)]" 
+                                      : "border-[var(--border)] hover:border-[var(--accent)]"
+                                  )}
+                                  title={tx.isUncleared ? "標記為已結清" : "標記為未結清"}
+                                />
+                                {tx.date}
+                              </div>
+                            </td>
                             <td className="px-6 py-4 font-mono text-xs">
                               {isDividend ? <span className="opacity-20">-</span> : `$${tx.unitPrice.toLocaleString()}`}
                             </td>
