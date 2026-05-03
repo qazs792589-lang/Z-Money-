@@ -207,24 +207,23 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       </div>
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border)]">
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">成本價</span>
-                          <span className="text-xs font-mono font-bold">${h.avgCost.toFixed(2)}</span>
+                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">最新收盤價</span>
+                          <span className="text-xs font-mono font-bold">${curPrice.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col text-right">
                           <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">總市值</span>
                           <span className="text-xs font-mono font-bold">${(curPrice * h.currentShares).toLocaleString()}</span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">帳面盈虧</span>
-                          <span className={cn("text-xs font-mono font-bold", hpl >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {hpl >= 0 ? '+' : ''}{hpl.toLocaleString()}
-                          </span>
+                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">成本價</span>
+                          <span className="text-xs font-mono font-bold text-[var(--text-dim)]">${h.avgCost.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col text-right">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">報酬率</span>
-                          <span className={cn("text-xs font-mono font-bold", hroi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {hroi >= 0 ? '+' : ''}{hroi.toFixed(2)}%
-                          </span>
+                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">帳面盈虧 / 報酬率</span>
+                          <div className={cn("text-xs font-mono font-bold flex items-center justify-end gap-1.5", hpl >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                            <span>{hpl >= 0 ? '+' : ''}{hpl.toLocaleString()}</span>
+                            <span className="text-[10px] opacity-70">({hroi >= 0 ? '+' : ''}{hroi.toFixed(2)}%)</span>
+                          </div>
                         </div>
                       </div>
                     </div>
