@@ -80,7 +80,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
     <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black flex items-center gap-3">
-          <History className="text-[var(--accent)]" /> 歷史交易全紀錄 (已實現)
+          <History className="text-[var(--accent)]" /> 已實現損益
         </h2>
         <div className="flex gap-2">
           <input

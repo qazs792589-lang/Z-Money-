@@ -123,7 +123,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           <div className="w-full shrink-0 px-1 space-y-10">
             <div className="elegant-card p-6 relative">
               <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 mb-8 uppercase tracking-[0.2em] text-[var(--accent)]">
-                <PieChartIcon size={12} /> Portfolio Allocation
+                <PieChartIcon size={12} /> 資產配置比例
               </h3>
               <div className="flex flex-col md:flex-row items-center gap-8">
                 <div className="flex-1 w-full h-[320px]">
@@ -181,7 +181,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
             <div className="space-y-6">
               <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 uppercase tracking-[0.2em]">
-                <Edit2 size={12} /> Positions Details
+                <Edit2 size={12} /> 當前持倉明細
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {appData.activeHoldings.map(h => {
@@ -238,7 +238,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <div className="elegant-card p-0 overflow-hidden relative">
               <div className="p-6 pb-0">
                 <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 uppercase tracking-[0.2em] text-[var(--accent)]">
-                  <Activity size={12} /> Valuation Trend
+                  <Activity size={12} /> 資產價值趨勢
                 </h3>
               </div>
               <div className="h-[320px] relative">
@@ -329,7 +329,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <div className="space-y-4">
               <div className="flex items-center gap-3 px-2">
                 <Layers className="text-[var(--accent)]" size={18} />
-                <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-dim)]">Asset History Matrix</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-dim)]">歷史週倉位矩陣</h3>
               </div>
             <div className="elegant-card p-0 overflow-hidden border-[var(--border)] shadow-xl">
               <div className="overflow-x-auto custom-scrollbar">

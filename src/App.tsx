@@ -763,16 +763,6 @@ export default function App() {
             </div>
           </div>
 
-          <div className={cn("mt-auto transition-all", !isSidebarOpen && "lg:hidden")}>
-            <div className="elegant-card p-4 bg-[var(--bg-primary)]">
-              <span className="text-[10px] text-[var(--accent)] font-bold mb-2 flex items-center gap-2">
-                <Database size={10} /> SSOT PROTOCOL
-              </span>
-              <p className="text-[9px] text-[var(--text-dim)] leading-relaxed italic opacity-70">
-                * One input, multiple views. Integrity locked.
-              </p>
-            </div>
-          </div>
         </aside>
 
         {/* Overlay for mobile */}
