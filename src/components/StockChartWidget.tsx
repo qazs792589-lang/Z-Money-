@@ -173,20 +173,20 @@ export const StockChartWidget = ({ ticker, transactions, weeklyPrices, marketDat
                           </div>
                         )}
 
-                        {payload.map((entry, index) => {
-                          if (entry.dataKey !== 'positionValue' && entry.dataKey !== 'totalCost') return null;
-                          return (
+                        {[...payload]
+                          .filter(entry => entry.dataKey === 'positionValue' || entry.dataKey === 'totalCost')
+                          .sort((a, b) => Number(b.value) - Number(a.value))
+                          .map((entry, index) => (
                             <div key={index} className="flex items-center justify-between gap-6 py-0.5">
                               <div className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span style={{ color: entry.color }} className="opacity-90 font-bold whitespace-nowrap">
-                                  {entry.name === 'positionValue' ? '市值' : entry.name === 'totalCost' ? '成本' : entry.name}
+                                  {entry.dataKey === 'positionValue' ? '市值' : entry.dataKey === 'totalCost' ? '成本' : entry.name}
                                 </span>
                               </div>
                               <span className="font-bold text-[var(--text-main)] whitespace-nowrap">${Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                             </div>
-                          );
-                        })}
+                          ))}
                       </div>
                     );
                   }

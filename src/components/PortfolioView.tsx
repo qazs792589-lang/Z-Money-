@@ -282,15 +282,16 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-3 rounded-xl shadow-2xl backdrop-blur-md">
                               <div className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] pb-2 mb-2">{label?.toString().replace(/-/g, '/')}</div>
                               <div className="space-y-1.5">
-                                <div className="flex items-center justify-between gap-8">
-                                  <span className="text-[11px] font-bold text-[var(--text-dim)]">市值</span>
-                                  <span className="text-xs font-mono font-black text-[var(--text-main)]">${originalPoint.value.toLocaleString()}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-8 text-[var(--danger)]">
-                                  <span className="text-[11px] font-bold opacity-80">成本</span>
-                                  <span className="text-xs font-mono font-black">${originalPoint.cost.toLocaleString()}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-8 text-[var(--success)]">
+                                {[
+                                  { label: '市值', value: originalPoint.value, color: 'var(--text-main)' },
+                                  { label: '成本', value: originalPoint.cost, color: 'var(--danger)' }
+                                ].sort((a, b) => b.value - a.value).map((item, idx) => (
+                                  <div key={idx} className="flex items-center justify-between gap-8" style={{ color: item.color === 'var(--text-main)' ? undefined : item.color }}>
+                                    <span className={cn("text-[11px] font-bold", item.color === 'var(--text-main)' ? "text-[var(--text-dim)]" : "opacity-80")}>{item.label}</span>
+                                    <span className={cn("text-xs font-mono font-black", item.color === 'var(--text-main)' ? "text-[var(--text-main)]" : "")}>${item.value.toLocaleString()}</span>
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between gap-8 text-[var(--success)] border-t border-[var(--border)] pt-1.5 mt-1.5">
                                   <span className="text-[11px] font-bold opacity-80">盈虧</span>
                                   <span className="text-xs font-mono font-black">${originalPoint.profit.toLocaleString()}</span>
                                 </div>
@@ -301,7 +302,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         return null;
                       }}
                     />
-                    <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '9px', fontWeight: 'bold', opacity: 0.6 }} />
+                    <Legend layout="vertical" verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', opacity: 0.6, top: 0, right: 0 }} />
                     <Line 
                       yAxisId="left" 
                       type="monotone" 
