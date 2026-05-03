@@ -71,18 +71,18 @@ import { RealizedView } from './components/RealizedView';
 import { LockScreen } from './components/LockScreen';
 import { Shield, Lock as LockIcon, Unlock as UnlockIcon, AlertCircle } from 'lucide-react';
 
-function DraggableTickerPill({ 
-  ticker, 
-  name, 
-  isZero, 
-  onRename, 
-  onDelete 
-}: { 
-  ticker: string, 
-  name: string, 
-  isZero: boolean, 
-  onRename: (t: string) => void, 
-  onDelete: (t: string) => void 
+function DraggableTickerPill({
+  ticker,
+  name,
+  isZero,
+  onRename,
+  onDelete
+}: {
+  ticker: string,
+  name: string,
+  isZero: boolean,
+  onRename: (t: string) => void,
+  onDelete: (t: string) => void
 }) {
   const dragControls = useDragControls();
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -113,7 +113,7 @@ function DraggableTickerPill({
         isZero ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-60" : "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)]"
       )}
     >
-      <span 
+      <span
         className="opacity-60 text-[10px] cursor-grab active:cursor-grabbing p-1 -ml-2"
         onPointerDown={(e) => dragControls.start(e)}
       >
@@ -376,6 +376,67 @@ export default function App() {
     setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, notes } : tx));
   };
 
+  const handleExportBackupCsv = () => {
+    if (transactions.length === 0) {
+      alert('目前沒有交易資料可供匯出。');
+      return;
+    }
+    const headers = "日期,股票代號,股票名稱,交易種類,數量,成交單價,類別,手續費,稅金,交易總額,備註\n";
+    const rows = transactions.map(tx => 
+      `${tx.date},${tx.ticker},"${tx.name}",${tx.direction},${tx.quantity},${tx.unitPrice},${tx.category},${tx.fee},${tx.tax},${tx.totalAmount},"${tx.notes || ''}"`
+    ).join("\n");
+    
+    const blob = new Blob(["\uFEFF" + headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Z-Money-Backup-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportBackupCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) return;
+        
+        const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+        const newTxs: Transaction[] = lines.slice(1).map(line => {
+          const parts = line.split(csvRegex).map(p => p.trim().replace(/"/g, ''));
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            date: parts[0],
+            ticker: parts[1],
+            name: parts[2],
+            direction: parts[3] as any,
+            quantity: parseFloat(parts[4]),
+            unitPrice: parseFloat(parts[5]),
+            category: parts[6] as any,
+            fee: parseFloat(parts[7]),
+            tax: parseFloat(parts[8]),
+            totalAmount: parseFloat(parts[9]),
+            notes: parts[10] || ''
+          };
+        });
+        
+        if (window.confirm(`確定要匯入這 ${newTxs.length} 筆備份資料嗎？\n這將會與現有資料合併。`)) {
+          setTransactions(prev => [...prev, ...newTxs]);
+          alert('匯入成功！');
+        }
+      } catch (err) {
+        alert('匯入失敗，請檢查 CSV 格式是否正確。');
+      }
+    };
+    reader.readAsText(file);
+    if (e.target) e.target.value = '';
+  };
+
   // Derived Calculations & Logic extracted to custom hooks
   const { formData, setFormData, preview } = useTransactionForm(configs);
   const { appData, stats } = usePortfolioCalculations(transactions, marketData, weeklyPrices);
@@ -525,7 +586,7 @@ export default function App() {
   const handleRenameTicker = (oldTicker: string) => {
     const groupTxs = appData.stockGroups[oldTicker] || [];
     const currentName = groupTxs.length > 0 ? groupTxs[0].name : oldTicker;
-    
+
     const newTicker = window.prompt(`正在修改「${currentName}」的代號\n請輸入新的代號 (ID):`, oldTicker);
     if (!newTicker || newTicker === oldTicker) return;
 
@@ -533,13 +594,13 @@ export default function App() {
     if (!newName) return;
 
     if (window.confirm(`確定要將「${oldTicker} | ${currentName}」更名為「${newTicker} | ${newName}」嗎？\n這將更新 ${groupTxs.length} 筆交易紀錄。`)) {
-      setTransactions(prev => prev.map(tx => 
-        tx.ticker === oldTicker 
-          ? { ...tx, ticker: newTicker, name: newName } 
+      setTransactions(prev => prev.map(tx =>
+        tx.ticker === oldTicker
+          ? { ...tx, ticker: newTicker, name: newName }
           : tx
       ));
       setSelectedTicker(newTicker);
-      
+
       // Update order if exists
       if (tickerOrder.includes(oldTicker)) {
         setTickerOrder(prev => prev.map(t => t === oldTicker ? newTicker : t));
@@ -627,7 +688,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar: Navigation Controller */}
         <aside className={cn(
-          "bg-[var(--bg-secondary)] border-r border-[var(--border)] p-6 flex flex-col gap-8 transition-all duration-300 z-40 fixed top-16 left-0 h-[calc(100vh-64px)] overflow-y-auto shadow-2xl",
+          "bg-[var(--bg-secondary)] border-r border-[var(--border)] p-6 flex flex-col gap-8 transition-all duration-300 z-[100] fixed top-16 left-0 h-[calc(100vh-64px)] overflow-y-auto shadow-2xl",
           isSidebarOpen ? "translate-x-0 w-[260px]" : "-translate-x-full lg:translate-x-0 lg:w-[80px] lg:px-4"
         )}>
           <div>
@@ -642,6 +703,7 @@ export default function App() {
                 { id: 'A', label: '交易/明細', icon: Plus, desc: 'Groups & Entry' },
                 { id: 'B', label: '未實現損益', icon: LayoutDashboard, desc: 'Portfolio' },
                 { id: 'C', label: '已實現損益', icon: History, desc: 'History ROI' },
+                { id: 'D', label: '系統設定', icon: Shield, desc: 'Settings' },
               ].map((nav) => (
                 <button
                   key={nav.id}
@@ -670,105 +732,12 @@ export default function App() {
             </nav>
           </div>
 
-          <div>
-            <span className={cn(
-              "text-[10px] font-bold text-[var(--text-dim)] uppercase tracking-widest pl-2 mb-4 block transition-opacity",
-              !isSidebarOpen && "lg:opacity-0"
-            )}>
-              Security
-            </span>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setIsSettingPass(!isSettingPass)}
-                className={cn(
-                  "flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all border group relative overflow-hidden",
-                  isSettingPass
-                    ? "bg-[var(--bg-tertiary)] border-[var(--accent)] text-[var(--accent)]"
-                    : "bg-transparent border-transparent text-[var(--text-dim)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[var(--text-main)]",
-                  !isSidebarOpen && "lg:px-0 lg:justify-center"
-                )}
-              >
-                <Shield size={18} />
-                <span className={cn("text-sm font-bold", !isSidebarOpen && "lg:hidden")}>安全設定</span>
-              </button>
-
-              <AnimatePresence>
-                {isSettingPass && isSidebarOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="px-2 space-y-3 overflow-hidden"
-                  >
-                    <div className="p-3 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)]">
-                      <label className="text-[9px] font-bold text-[var(--text-dim)] uppercase mb-2 block">
-                        {appPassword ? '修改或取消 PIN 碼 (4-6 位)' : '設定 4-6 位 PIN 碼'}
-                      </label>
-                      <input
-                        type="password"
-                        maxLength={6}
-                        placeholder="••••••"
-                        value={newPass}
-                        onChange={(e) => setNewPass(e.target.value.replace(/\D/g, ''))}
-                        className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-3 py-2 text-center font-mono tracking-[0.5em] text-lg mb-3"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            if (newPass.length >= 4) {
-                              setAppPassword(newPass);
-                              setNewPass('');
-                              setIsSettingPass(false);
-                              alert('密碼設定成功！');
-                            } else {
-                              alert('請輸入 4-6 位數字');
-                            }
-                          }}
-                          className="flex-1 bg-[var(--accent)] text-[var(--bg-primary)] py-2 rounded-lg text-xs font-bold"
-                        >
-                          確認
-                        </button>
-                        {appPassword && (
-                          <button
-                            onClick={() => {
-                              if (window.confirm('確定要關閉密碼鎖嗎？')) {
-                                setAppPassword('');
-                                setNewPass('');
-                                setIsSettingPass(false);
-                              }
-                            }}
-                            className="flex-1 bg-[var(--danger)]/20 text-[var(--danger)] py-2 rounded-lg text-xs font-bold"
-                          >
-                            關閉
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        if (window.confirm('警告：這將清除所有交易紀錄與設定！此操作無法復原。')) {
-                          localStorage.clear();
-                          window.location.reload();
-                        }
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-lg transition-all"
-                    >
-                      <AlertCircle size={14} />
-                      <span className="text-[10px] font-bold uppercase">重置所有資料</span>
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
         </aside>
 
         {/* Overlay for mobile */}
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -802,9 +771,9 @@ export default function App() {
                           onChange={(e) => {
                             const val = e.target.value.toUpperCase();
                             const mappedName = stockMap.tMap[val];
-                            setFormData({ 
-                              ...formData, 
-                              ticker: val, 
+                            setFormData({
+                              ...formData,
+                              ticker: val,
                               name: mappedName || formData.name // Auto-fill name if found
                             });
                           }}
@@ -823,9 +792,9 @@ export default function App() {
                           onChange={(e) => {
                             const val = e.target.value;
                             const mappedTicker = stockMap.nMap[val.toUpperCase()];
-                            setFormData({ 
-                              ...formData, 
-                              name: val, 
+                            setFormData({
+                              ...formData,
+                              name: val,
                               ticker: mappedTicker || formData.ticker // Auto-fill ticker if found
                             });
                           }}
@@ -1073,7 +1042,7 @@ export default function App() {
 
                       const roi = h.avgCost > 0
                         ? ((curPrice / h.avgCost) - 1) * 100
-                        : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0); 
+                        : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0);
                       const displayName = txs.length > 0 ? txs[0].name : h.name;
 
                       return (
@@ -1083,7 +1052,7 @@ export default function App() {
                               <div className="p-4 md:p-8 bg-[var(--bg-secondary)] flex flex-col justify-center">
                                 <div className="flex flex-row items-end justify-between gap-2 md:gap-6 mb-4 md:mb-6">
                                   <div className="flex flex-col min-w-0 flex-shrink">
-                                    <h5 
+                                    <h5
                                       onClick={() => handleRenameTicker(ticker)}
                                       className="text-xl md:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tighter mb-1 md:mb-2 truncate cursor-pointer hover:text-[var(--accent)] transition-colors"
                                       title="點擊修改名稱或代號"
@@ -1091,7 +1060,7 @@ export default function App() {
                                       {displayName}
                                     </h5>
                                     <div className="flex items-center gap-1 md:gap-2">
-                                      <span 
+                                      <span
                                         onClick={() => handleRenameTicker(ticker)}
                                         className="px-1.5 py-0.5 md:px-2 md:py-1 bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent)] rounded text-[9px] md:text-xs font-mono font-bold tracking-widest leading-none cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--bg-primary)] transition-all"
                                         title="點擊修改代號"
@@ -1372,11 +1341,141 @@ export default function App() {
           )}
 
           {activeView === 'C' && (
-            <RealizedView 
-              appData={appData} 
-              onImport={handleHistoryCsvImport} 
+            <RealizedView
+              appData={appData}
+              onImport={handleHistoryCsvImport}
               onUpdateNotes={handleUpdateTransactionNotes}
             />
+          )}
+
+          {activeView === 'D' && (
+            <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pt-4 pb-20">
+              <div className="flex items-center gap-4 mb-8 px-2">
+                <div className="p-3 bg-[var(--bg-tertiary)] rounded-2xl border border-[var(--border)] text-[var(--accent)] shadow-xl">
+                  <Plus className="rotate-45" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-[var(--text-main)]">系統設定</h2>
+                  <p className="text-xs text-[var(--text-dim)]">管理您的 PIN 碼鎖與應用程式資料</p>
+                </div>
+              </div>
+
+              <div className="elegant-card space-y-8">
+                {/* PIN Settings */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                    <Shield size={16} className="text-[var(--accent)]" /> 
+                    {appPassword ? '修改 PIN 碼鎖' : '啟用 PIN 碼鎖'}
+                  </h3>
+                  <div className="p-4 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)]">
+                    <label className="text-[10px] font-bold text-[var(--text-dim)] uppercase mb-3 block">
+                      請輸入 4-6 位數字
+                    </label>
+                    <input
+                      type="password"
+                      maxLength={6}
+                      placeholder="••••••"
+                      value={newPass}
+                      onChange={(e) => setNewPass(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-center font-mono tracking-[1em] text-2xl mb-4 focus:border-[var(--accent)] outline-none transition-all"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          if (newPass.length >= 4) {
+                            setAppPassword(newPass);
+                            setNewPass('');
+                            alert('密碼設定成功！');
+                          } else {
+                            alert('請輸入 4-6 位數字');
+                          }
+                        }}
+                        className="flex-1 bg-[var(--accent)] text-[var(--bg-primary)] py-3 rounded-xl text-sm font-black shadow-lg shadow-[var(--accent-glow)] active:scale-95 transition-transform"
+                      >
+                        儲存新密碼
+                      </button>
+                      {appPassword && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('確定要關閉密碼鎖嗎？')) {
+                              setAppPassword('');
+                              setNewPass('');
+                            }
+                          }}
+                          className="flex-1 bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 py-3 rounded-xl text-sm font-bold hover:bg-[var(--danger)]/20 active:scale-95 transition-all"
+                        >
+                          解除密碼鎖
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Backup & Recovery */}
+                <div className="pt-6 border-t border-[var(--border)] space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                    <Database size={16} className="text-[var(--accent)]" /> 
+                    數據備份與恢復
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={handleExportBackupCsv}
+                      className="flex flex-col items-center gap-3 p-6 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] transition-all group"
+                    >
+                      <div className="p-3 bg-[var(--accent)]/10 rounded-full text-[var(--accent)] group-hover:scale-110 transition-transform">
+                        <FileUp size={20} />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs font-black">匯出備份 (CSV)</div>
+                        <div className="text-[9px] text-[var(--text-dim)] mt-1">下載所有交易紀錄</div>
+                      </div>
+                    </button>
+
+                    <label className="flex flex-col items-center gap-3 p-6 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] cursor-pointer transition-all group">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleImportBackupCsv}
+                      />
+                      <div className="p-3 bg-[var(--accent)]/10 rounded-full text-[var(--accent)] group-hover:scale-110 transition-transform">
+                        <History size={20} />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs font-black">匯入備份 (CSV)</div>
+                        <div className="text-[9px] text-[var(--text-dim)] mt-1">從備份檔恢復數據</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Danger Zone */}
+                <div className="pt-6 border-t border-[var(--border)]">
+                  <h3 className="text-sm font-bold text-[var(--danger)] flex items-center gap-2 mb-4">
+                    <AlertCircle size={16} /> 危險區域
+                  </h3>
+                  <div className="p-4 bg-[var(--danger)]/5 rounded-xl border border-[var(--danger)]/20 flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="text-xs font-bold text-[var(--text-main)] mb-1">重置所有資料</div>
+                      <p className="text-[10px] text-[var(--text-dim)] leading-relaxed">
+                        這將立即清除所有存儲在本地的交易紀錄、匯入的收盤價以及所有個人設定。此操作無法撤銷。
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('警告：這將徹底清除所有資料！確定要繼續嗎？')) {
+                          localStorage.clear();
+                          window.location.reload();
+                        }
+                      }}
+                      className="shrink-0 bg-[var(--danger)] text-white px-4 py-2.5 rounded-lg text-xs font-black shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                    >
+                      立刻重置
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>
