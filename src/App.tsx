@@ -783,7 +783,7 @@ export default function App() {
 
                 <div className={cn("elegant-card space-y-6 transition-all", editingTxId && "border-orange-500/30 shadow-[0_0_30px_rgba(249,115,22,0.1)]")}>
                   {/* SPLIT INPUTS with Auto-Mapping */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
                       <label className="elegant-label text-xs">股票代號</label>
                       <div className="relative">

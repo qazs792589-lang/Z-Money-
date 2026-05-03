@@ -270,6 +270,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                                   <span className="text-[11px] font-bold text-[var(--text-dim)]">市值</span>
                                   <span className="text-xs font-mono font-black text-[var(--text-main)]">${originalPoint.value.toLocaleString()}</span>
                                 </div>
+                                <div className="flex items-center justify-between gap-8 text-[var(--danger)]">
+                                  <span className="text-[11px] font-bold opacity-80">成本</span>
+                                  <span className="text-xs font-mono font-black">${originalPoint.cost.toLocaleString()}</span>
+                                </div>
                                 <div className="flex items-center justify-between gap-8 text-[var(--success)]">
                                   <span className="text-[11px] font-bold opacity-80">盈虧</span>
                                   <span className="text-xs font-mono font-black">${originalPoint.profit.toLocaleString()}</span>
@@ -293,6 +297,18 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         return subset.reduce((acc, curr) => acc + curr.value, 0) / subset.length;
                       }}
                       stroke="var(--accent)" strokeWidth={3} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--accent)' }} 
+                    />
+                    <Line 
+                      yAxisId="left" 
+                      type="monotone" 
+                      name="投入總成本" 
+                      dataKey={(d) => {
+                        const idx = chartData.indexOf(d);
+                        const win = 5;
+                        const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
+                        return subset.reduce((acc, curr) => acc + curr.cost, 0) / subset.length;
+                      }}
+                      stroke="var(--danger)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={false} 
                     />
                     <Line 
                       yAxisId="right" 
