@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Config, TransactionCategory, TransactionDirection, Holding, RealizedProfit, Transaction, WeeklyPrice } from '../types';
+import { Holding, RealizedProfit, Transaction, WeeklyPrice } from '../types';
+import { isTxRealized } from '../lib/txUtils';
 
 export const usePortfolioCalculations = (transactions: Transaction[], marketData: { updated: string | null; prices: Record<string, number> }, weeklyPrices: WeeklyPrice[]) => {
   const appData = useMemo(() => {
@@ -15,9 +16,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
       if (!stockGroups[tx.ticker]) stockGroups[tx.ticker] = [];
       stockGroups[tx.ticker].push(tx);
 
-      const isTxRealized = tx.isManualRealized !== undefined 
-        ? tx.isManualRealized 
-        : (tx.direction !== 'BUY');
+      const isRealized = isTxRealized(tx);
 
       if (!holdings[tx.ticker]) {
         holdings[tx.ticker] = { 
@@ -40,7 +39,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
         h._mathFees += tx.fee + tx.tax;
 
         // Update Active Holding (Only if NOT manually marked realized)
-        if (!isTxRealized) {
+        if (!isRealized) {
           if (h.currentShares === 0) h.firstBuyDate = tx.date;
           h.currentShares += tx.quantity;
           h.totalInvested += Math.abs(tx.totalAmount);
@@ -55,7 +54,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
         const sellRevenue = Math.abs(tx.totalAmount);
         const profit = sellRevenue - costBasis;
 
-        if (isTxRealized) {
+        if (isRealized) {
           h.realizedPL += profit;
           
           let daysHeld = 0;
@@ -94,7 +93,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
         }
       } else if (tx.direction === 'DIVIDEND') {
         const dividendAmount = Math.abs(tx.totalAmount);
-        if (isTxRealized) {
+        if (isRealized) {
           h.realizedPL += dividendAmount;
           realizedList.push({
             ticker: tx.ticker, name: tx.name, shares: 0, buyPrice: 0, sellPrice: 0, totalCost: 0, totalRevenue: dividendAmount,

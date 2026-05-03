@@ -70,70 +70,14 @@ import { DEFAULT_CONFIGS, INITIAL_TRANSACTIONS } from './constants';
 import { StockChartWidget } from './components/StockChartWidget';
 import { usePortfolioCalculations } from './hooks/usePortfolioCalculations';
 import { useTransactionForm } from './hooks/useTransactionForm';
+import { TransactionRow } from './components/TransactionRow';
+import { TickerPillList } from './components/TickerPillList';
 import { PortfolioView } from './components/PortfolioView';
 import { RealizedView } from './components/RealizedView';
 import { LockScreen } from './components/LockScreen';
 import { Shield, Lock as LockIcon, Unlock as UnlockIcon, AlertCircle } from 'lucide-react';
+import { isTxRealized } from './lib/txUtils';
 
-function DraggableTickerPill({
-  ticker,
-  name,
-  isZero,
-  onRename,
-  onDelete
-}: {
-  ticker: string,
-  name: string,
-  isZero: boolean,
-  onRename: (t: string) => void,
-  onDelete: (t: string) => void
-}) {
-  const dragControls = useDragControls();
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-
-  return (
-    <Reorder.Item
-      key={ticker}
-      value={ticker}
-      dragListener={false}
-      dragControls={dragControls}
-      whileDrag={{
-        scale: 1.05,
-        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-        zIndex: 50
-      }}
-      transition={{ type: "spring", stiffness: 600, damping: 40 }}
-      onPointerDown={() => {
-        longPressTimer.current = setTimeout(() => onRename(ticker), 600);
-      }}
-      onPointerUp={() => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
-      }}
-      onPointerLeave={() => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
-      }}
-      className={cn(
-        "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap border shadow-sm flex items-center gap-2 transition-opacity hardware-accel no-select",
-        isZero ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-60" : "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)]"
-      )}
-    >
-      <span
-        className="opacity-60 text-[10px] cursor-grab active:cursor-grabbing p-1 -ml-2"
-        onPointerDown={(e) => dragControls.start(e)}
-      >
-        ⠿
-      </span>
-      {name}
-      <button
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onDelete(ticker); }}
-        className="ml-1 p-0.5 hover:bg-black/20 rounded-full transition-colors"
-      >
-        <X size={10} />
-      </button>
-    </Reorder.Item>
-  );
-}
 
 export default function App() {
   const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('A');
@@ -182,31 +126,24 @@ export default function App() {
     return { tMap, nMap };
   }, [transactions]);
 
-  // Persistence: Save on Change
+  // Persistence: Centralized Storage Handler
   useEffect(() => {
-    localStorage.setItem('z_money_transactions', JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem('z_money_weekly_prices', JSON.stringify(weeklyPrices));
-  }, [weeklyPrices]);
-
-  useEffect(() => {
-    localStorage.setItem('z_money_market_data', JSON.stringify(marketData));
-  }, [marketData]);
-
-  useEffect(() => {
-    localStorage.setItem('z_money_theme', theme);
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem('z_money_ticker_order', JSON.stringify(tickerOrder));
-  }, [tickerOrder]);
-
-  useEffect(() => {
-    if (appPassword) localStorage.setItem('z_money_pass', appPassword);
-    else localStorage.removeItem('z_money_pass');
-  }, [appPassword]);
+    const data = {
+      z_money_transactions: transactions,
+      z_money_weekly_prices: weeklyPrices,
+      z_money_market_data: marketData,
+      z_money_theme: theme,
+      z_money_ticker_order: tickerOrder,
+      z_money_pass: appPassword
+    };
+    Object.entries(data).forEach(([key, val]) => {
+      if (val !== undefined && val !== null) {
+        localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val));
+      } else {
+        localStorage.removeItem(key);
+      }
+    });
+  }, [transactions, weeklyPrices, marketData, theme, tickerOrder, appPassword]);
 
   useEffect(() => {
     if (theme === 'gold') {
@@ -449,9 +386,7 @@ export default function App() {
     setTransactions(prev => prev.map(tx => {
       if (tx.id === id) {
         // Effective current state:
-        const isCurrentlyRealized = tx.isManualRealized !== undefined 
-          ? tx.isManualRealized 
-          : (tx.direction !== 'BUY');
+        const isCurrentlyRealized = isTxRealized(tx);
         return { ...tx, isManualRealized: !isCurrentlyRealized };
       }
       return tx;
@@ -651,6 +586,10 @@ export default function App() {
     setTimeout(() => {
       document.getElementById('tx-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
+  };
+
+  const handleUpdateMarket = () => {
+    alert('自動更新市價功能已停用，請透過下方「每週收盤價登錄」功能手動匯入 CSV 或新增紀錄。');
   };
 
   return (
@@ -981,74 +920,22 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Modern Pill Ticker Navigation */}
+                  {/* Modern Ticker Navigation */}
                   <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none smooth-scroll-x">
-                    {(() => {
-                      const allTickers = Object.keys(appData.stockGroups);
-
-                      // Split into active and zero-share
-                      const activeTickers = allTickers.filter(t => (appData.holdingsMap[t]?.currentShares || 0) > 0);
-                      const zeroTickers = allTickers.filter(t => (appData.holdingsMap[t]?.currentShares || 0) <= 0);
-
-                      // Final sorting: Custom Order -> Active (Sorted) -> Zero (Sorted)
-                      const currentOrder = tickerOrder.filter(t => allTickers.includes(t));
-                      const unorganizedActive = activeTickers.filter(t => !tickerOrder.includes(t)).sort();
-                      const unorganizedZero = zeroTickers.filter(t => !tickerOrder.includes(t)).sort();
-
-                      const sortedTickers = [...currentOrder, ...unorganizedActive, ...unorganizedZero];
-
-                      if (isEditingTickers) {
-                        return (
-                          <Reorder.Group
-                            axis="x"
-                            values={sortedTickers}
-                            onReorder={setTickerOrder}
-                            className="flex items-center gap-2"
-                            style={{ touchAction: 'pan-y' }}
-                          >
-                            {sortedTickers.map(ticker => (
-                              <DraggableTickerPill
-                                key={ticker}
-                                ticker={ticker}
-                                name={appData.stockGroups[ticker]?.[0]?.name || ticker}
-                                isZero={(appData.holdingsMap[ticker]?.currentShares || 0) <= 0}
-                                onRename={handleRenameTicker}
-                                onDelete={handleDeleteHolding}
-                              />
-                            ))}
-                          </Reorder.Group>
-                        );
-                      }
-
-                      return (
-                        <div className="flex items-center gap-2">
-                          {sortedTickers.map(ticker => {
-                            const groupTxs = appData.stockGroups[ticker] || [];
-                            const stockName = groupTxs.length > 0 ? groupTxs[0].name : ticker;
-                            const isZero = (appData.holdingsMap[ticker]?.currentShares || 0) <= 0;
-
-                            return (
-                              <button
-                                key={ticker}
-                                onClick={() => setSelectedTicker(ticker)}
-                                className={cn(
-                                  "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all border shrink-0 hardware-accel",
-                                  selectedTicker === ticker
-                                    ? "bg-[var(--text-main)] text-[var(--bg-primary)] border-[var(--text-main)] shadow-lg shadow-[var(--accent-glow)] active:scale-[0.98]"
-                                    : cn(
-                                      "bg-[var(--bg-secondary)] border-[var(--border)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-main)]",
-                                      isZero ? "text-[var(--text-dim)]/50 border-dashed" : "text-[var(--text-dim)]"
-                                    )
-                                )}
-                              >
-                                {stockName}
-                                {isZero && <span className="ml-1 opacity-40 text-[9px]">(已清倉)</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
+                    <TickerPillList
+                      tickerOrder={tickerOrder}
+                      setTickerOrder={setTickerOrder}
+                      selectedTicker={selectedTicker}
+                      setSelectedTicker={setSelectedTicker}
+                      stockMap={stockMap.tMap}
+                      holdingsMap={appData.holdingsMap}
+                      onRenameTicker={handleRenameTicker}
+                      onDeleteTicker={handleDeleteHolding}
+                      onImportBackup={() => fileInputRef.current?.click()}
+                      onUpdateMarket={handleUpdateMarket}
+                      isEditing={isEditingTickers}
+                      allTickers={Object.keys(appData.stockGroups)}
+                    />
                   </div>
                 </div>
 
@@ -1126,102 +1013,19 @@ export default function App() {
                                   <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">歷史交易明細表</span>
                                   <span className="text-[9px] font-mono text-[var(--text-dim)] border border-[var(--border)] px-2 py-0.5 rounded italic opacity-50">{txs.length} 筆資料</span>
                                 </div>
-                                <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                                  <AnimatePresence initial={false}>
-                                    {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
-                                      <motion.div
-                                        key={tx.id}
-                                        layout
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        className="relative overflow-hidden border-b border-[var(--border)] group"
-                                      >
-
-                                        <motion.div
-                                          drag="x"
-                                          dragConstraints={{ left: 0, right: 0 }}
-                                          dragElastic={0.4}
-                                          dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
-                                          onDragEnd={(_, info) => {
-                                            if (Math.abs(info.offset.x) > 80) {
-                                              handleDeleteTransaction(tx.id);
-                                            }
-                                          }}
-                                          className={cn(
-                                            "relative px-3 py-3 md:px-6 md:py-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors cursor-grab active:cursor-grabbing hardware-accel no-select",
-                                            ((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY'))
-                                              ? "bg-[var(--bg-tertiary)]" 
-                                              : "bg-[var(--bg-secondary)]"
-                                          )}
-                                          style={{ touchAction: 'pan-y' }}
-                                        >
-                                          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-                                            <div className="flex flex-col items-center gap-1 shrink-0">
-                                              <div className={cn(
-                                                "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase",
-                                                tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
-                                                  tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-yellow-500/10 text-yellow-500"
-                                              )}>
-                                                {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
-                                              </div>
-                                              {((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY')) && (
-                                                <span className="text-[8px] font-bold text-[var(--text-dim)] opacity-60 scale-90 whitespace-nowrap">(以實現)</span>
-                                              )}
-                                            </div>
-                                            <div className="truncate min-w-0 flex flex-col justify-center">
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-[9px] font-mono font-bold text-[var(--text-dim)] opacity-60 leading-none">{tx.date}</span>
-                                                <div className="flex items-center gap-2">
-                                                  <button
-                                                    onClick={(e) => { e.stopPropagation(); handleEditTx(tx); }}
-                                                    className="p-1.5 text-[var(--accent)] hover:bg-[var(--bg-primary)] rounded transition-all"
-                                                    title="編輯此筆交易"
-                                                  >
-                                                    <Edit2 size={10} />
-                                                  </button>
-                                                  <button
-                                                    onClick={(e) => { e.stopPropagation(); handleToggleRealized(tx.id); }}
-                                                    className={cn(
-                                                      "w-5 h-5 flex items-center justify-center rounded-full transition-all border",
-                                                      ((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY'))
-                                                        ? "bg-[var(--text-dim)] text-[var(--bg-primary)] border-transparent" 
-                                                        : "bg-transparent text-[var(--text-dim)] border-[var(--border)] opacity-30 hover:opacity-100"
-                                                    )}
-                                                    title={((tx.isManualRealized !== undefined ? tx.isManualRealized : tx.direction !== 'BUY')) ? "取消標記為已實現" : "標記為已實現 (不計入持倉)"}
-                                                  >
-                                                    <Check size={10} strokeWidth={4} />
-                                                  </button>
-                                                  <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx.id); }}
-                                                    className="p-1.5 text-[var(--danger)] hover:bg-[var(--bg-primary)] rounded transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
-                                                    title="刪除此筆交易"
-                                                  >
-                                                    <Trash2 size={10} />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                              <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold truncate leading-none">
-                                                <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
-                                                <span className="mx-2 opacity-30">|</span>
-                                                <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <div className="text-right shrink-0 flex flex-col justify-center ml-2">
-                                            <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-black opacity-60 mb-0.5 leading-none">
-                                              交易總額
-                                            </p>
-                                            <p className={cn(
-                                              "text-sm md:text-base font-mono font-black leading-none mt-1",
-                                              tx.direction === 'BUY' ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
-                                            )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                                          </div>
-                                        </motion.div>
-                                      </motion.div>
-                                    ))}
-                                  </AnimatePresence>
-                                </div>
+                                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                                    <AnimatePresence initial={false}>
+                                      {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                                        <TransactionRow
+                                          key={tx.id}
+                                          tx={tx}
+                                          onEdit={handleEditTx}
+                                          onDelete={handleDeleteTransaction}
+                                          onToggleRealized={handleToggleRealized}
+                                        />
+                                      ))}
+                                    </AnimatePresence>
+                                  </div>
                               </div>
 
                               <div className="p-4 md:p-8 bg-[var(--bg-primary)] border-t border-[var(--border)]">
