@@ -35,6 +35,7 @@ interface PortfolioViewProps {
   weeklyPrices: any[];
   setSelectedTicker: (ticker: string) => void;
   setActiveView: (view: 'A' | 'B' | 'C') => void;
+  tickerOrder: string[];
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -44,7 +45,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   marketData,
   weeklyPrices,
   setSelectedTicker,
-  setActiveView
+  setActiveView,
+  tickerOrder
 }) => {
   const [page, setPage] = useState(0);
 
@@ -81,11 +83,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <div className="stat-value text-[var(--text-main)] text-xl">${stats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           </div>
           <div className="stat-box border-[var(--accent)]/50">
-            <div className="stat-label">當前總市值</div>
+            <div className="stat-label">當前總市值 (含息)</div>
             <div className="stat-value text-[var(--accent)] text-xl">${stats.totalMarketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           </div>
           <div className={cn("stat-box", stats.unrealizedPL >= 0 ? "border-[var(--success)]/50" : "border-[var(--danger)]/50")}>
-            <div className="stat-label">帳面總損益</div>
+            <div className="stat-label">帳面總損益 (含息)</div>
             <div className={cn("stat-value text-xl", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
               {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               <span className="text-xs ml-2 opacity-60">({stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%)</span>
@@ -183,46 +185,61 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 uppercase tracking-[0.2em]">
                 <Edit2 size={12} /> 當前持倉明細
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {appData.activeHoldings.map(h => {
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...appData.activeHoldings]
+                  .sort((a, b) => {
+                    const idxA = tickerOrder.indexOf(a.ticker);
+                    const idxB = tickerOrder.indexOf(b.ticker);
+                    if (idxA === -1 && idxB === -1) return 0;
+                    if (idxA === -1) return 1;
+                    if (idxB === -1) return -1;
+                    return idxA - idxB;
+                  })
+                  .map(h => {
                   const latestWeekly = weeklyPrices.filter(wp => wp.ticker === h.ticker).sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
                   const curPrice = marketData.prices[h.ticker] || latestWeekly || h.avgCost;
                   const hpl = (curPrice - h.avgCost) * h.currentShares;
                   const hroi = h.avgCost > 0 ? (hpl / h.totalInvested) * 100 : 0;
                   return (
-                    <div key={h.ticker} className="elegant-card p-5 hover:border-[var(--accent)] transition-all group relative">
-                      <div className="flex justify-between items-start mb-6">
+                    <div key={h.ticker} className="elegant-card p-6 md:p-8 hover:border-[var(--accent)] transition-all group relative shadow-2xl">
+                      <div className="flex justify-between items-start mb-8">
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-lg font-black text-[var(--text-main)] leading-none">{h.name}</h4>
-                            <button onClick={() => { setSelectedTicker(h.ticker); setActiveView('A'); }} className="opacity-0 group-hover:opacity-100 text-[var(--accent)]">
-                              <Edit2 size={12} />
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-2xl font-black text-[var(--text-main)] leading-none tracking-tight">{h.name}</h4>
+                            <button onClick={() => { setSelectedTicker(h.ticker); setActiveView('A'); }} className="opacity-40 group-hover:opacity-100 text-[var(--accent)] transition-opacity">
+                              <Edit2 size={14} />
                             </button>
                           </div>
-                          <span className="text-[9px] text-[var(--text-dim)] font-mono uppercase">{h.ticker}</span>
+                          <span className="text-xs text-[var(--text-dim)] font-mono font-bold uppercase tracking-widest">{h.ticker}</span>
                         </div>
-                        <div className="text-right font-mono font-black text-[var(--accent)]">
-                          {h.currentShares.toLocaleString()} <span className="text-[8px] font-sans opacity-60">股</span>
+                        <div className="text-right">
+                          <div className="text-2xl font-mono font-black text-[var(--accent)] leading-none">
+                            {h.currentShares.toLocaleString()}
+                          </div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mt-1 opacity-60">
+                            持有股數
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border)]">
+                      
+                      <div className="grid grid-cols-2 gap-y-6 gap-x-4 pt-6 border-t border-[var(--border)]/50">
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">最新收盤價</span>
-                          <span className="text-xs font-mono font-bold">${curPrice.toFixed(2)}</span>
+                          <span className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest opacity-60 mb-2">最新收盤價</span>
+                          <span className="text-lg font-mono font-black text-[var(--text-main)]">${curPrice.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col text-right">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">總市值</span>
-                          <span className="text-xs font-mono font-bold">${(curPrice * h.currentShares).toLocaleString()}</span>
+                          <span className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest opacity-60 mb-2">總市值</span>
+                          <span className="text-lg font-mono font-black text-[var(--accent)]">${(curPrice * h.currentShares).toLocaleString()}</span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">成本價</span>
-                          <span className="text-xs font-mono font-bold text-[var(--text-dim)]">${h.avgCost.toFixed(2)}</span>
+                          <span className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest opacity-60 mb-2">平均成本</span>
+                          <span className="text-base font-mono font-bold text-[var(--text-dim)]">${h.avgCost.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col text-right">
-                          <span className="text-[8px] text-[var(--text-dim)] font-black uppercase opacity-50">帳面盈虧 / 報酬率</span>
-                          <div className={cn("text-xs font-mono font-bold flex items-center justify-end gap-1.5", hpl >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            <span>{hpl >= 0 ? '+' : ''}{hpl.toLocaleString()}</span>
-                            <span className="text-[10px] opacity-70">({hroi >= 0 ? '+' : ''}{hroi.toFixed(2)}%)</span>
+                          <span className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest opacity-60 mb-2">帳面損益 / 報酬率</span>
+                          <div className={cn("flex flex-col items-end", hpl >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                            <span className="text-lg font-mono font-black leading-none">{hpl >= 0 ? '+' : ''}{hpl.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                            <span className="text-xs font-black mt-1">{hroi >= 0 ? '▲' : '▼'} {Math.abs(hroi).toFixed(2)}%</span>
                           </div>
                         </div>
                       </div>
@@ -288,7 +305,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <Line 
                       yAxisId="left" 
                       type="monotone" 
-                      name="當前總市值" 
+                      name="當前總市值 (含息)" 
                       dataKey={(d) => {
                         const idx = chartData.indexOf(d);
                         const win = 5;
@@ -312,7 +329,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <Line 
                       yAxisId="right" 
                       type="monotone" 
-                      name="帳面總損益" 
+                      name="帳面總損益 (含息)" 
                       dataKey={(d) => {
                         const idx = chartData.indexOf(d);
                         const win = 5;
@@ -342,8 +359,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         <th key={ticker} className="px-4 py-4 border-b border-[var(--border)] text-right min-w-[100px]">{ticker}</th>
                       ))}
                       <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--danger)] min-w-[100px]">投入本金</th>
-                      <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--accent)] min-w-[100px]">總市值</th>
-                      <th className="px-6 py-4 border-b border-[var(--border)] text-right min-w-[120px]">帳面損益</th>
+                      <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--accent)] min-w-[100px]">總市值 (含息)</th>
+                      <th className="px-6 py-4 border-b border-[var(--border)] text-right min-w-[120px]">帳面損益 (含息)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">

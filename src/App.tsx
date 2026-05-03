@@ -1182,6 +1182,7 @@ export default function App() {
               weeklyPrices={weeklyPrices}
               setSelectedTicker={setSelectedTicker}
               setActiveView={setActiveView}
+              tickerOrder={tickerOrder}
             />
           )}
 
