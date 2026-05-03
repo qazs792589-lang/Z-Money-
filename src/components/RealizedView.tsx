@@ -40,6 +40,10 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
 
     Object.entries(appData.stockGroups).forEach(([ticker, txs]: [string, any]) => {
       const realizedItems = appData.realizedList.filter((r: RealizedProfit) => r.ticker === ticker);
+      
+      // ONLY include if there are realized items (sells/dividends)
+      if (realizedItems.length === 0) return;
+
       const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
       
       // Calculate historical cost (all BUYS ever made for this stock)
@@ -57,12 +61,15 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
         };
       });
 
+      const currentShares = appData.holdingsMap[ticker]?.currentShares || 0;
+
       groups[ticker] = {
         name: txs[0]?.name || ticker,
         transactions: displayRows,
         cumulativeProfit: totalProfit,
         cumulativeCost: totalCost,
-        cumulativeRevenue: totalRevenue
+        cumulativeRevenue: totalRevenue,
+        isHolding: currentShares > 0
       };
     });
 
@@ -73,7 +80,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
     <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black flex items-center gap-3">
-          <History className="text-[var(--accent)]" /> 歷史交易全紀錄 (依標的分組)
+          <History className="text-[var(--accent)]" /> 歷史交易全紀錄 (已實現)
         </h2>
         <div className="flex gap-2">
           <input
@@ -93,7 +100,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
       </div>
 
       <div className="space-y-6">
-        {tickerHistory.map(([ticker, group]) => {
+        {tickerHistory.map(([ticker, group]: [string, any]) => {
           const totalRoi = group.cumulativeCost > 0 ? (group.cumulativeProfit / group.cumulativeCost) * 100 : 0;
           return (
             <div key={ticker} className="elegant-card overflow-hidden border-[var(--border)] shadow-xl">
@@ -107,7 +114,12 @@ export const RealizedView: React.FC<RealizedViewProps> = ({ appData, onImport, o
                       <ChevronDown size={24} />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-tight">{group.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-tight">{group.name}</span>
+                        {group.isHolding && (
+                          <span className="text-[8px] bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">持有中</span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold tracking-[0.2em]">{ticker}</span>
                     </div>
                   </div>
