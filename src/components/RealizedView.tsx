@@ -56,7 +56,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
     Object.entries(appData.stockGroups).forEach(([ticker, txs]: [string, any]) => {
       const realizedItems = (appData.realizedList || []).filter((r: RealizedProfit) => r.ticker === ticker);
-      if (realizedItems.length === 0) return;
+      const currentShares = appData.holdingsMap?.[ticker]?.currentShares || 0;
+      if (realizedItems.length === 0 && currentShares === 0) return;
 
       const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
       const totalRealizedCost = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalCost, 0);
@@ -64,15 +65,17 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
       const displayRows = [...txs].sort((a, b) => a.date.localeCompare(b.date)).map(tx => {
         const realizedInfo = realizedItems.find((r: RealizedProfit) => r.sellTxId === tx.id);
+        // User requested: Skip ROI for dividends
+        const isDividend = tx.direction === 'DIVIDEND';
+        
         return {
           ...tx,
           realizedProfit: realizedInfo?.profit,
-          realizedRoi: realizedInfo?.roi,
+          realizedRoi: isDividend ? undefined : realizedInfo?.roi,
           daysHeld: realizedInfo?.daysHeld
         };
       });
 
-      const currentShares = appData.holdingsMap?.[ticker]?.currentShares || 0;
 
       const lastOpDate = txs.reduce((latest: string, tx: any) => tx.date > latest ? tx.date : latest, '0000-00-00');
 
@@ -190,13 +193,43 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <ChevronDown size={20} />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-lg md:text-xl font-black text-[var(--text-main)] uppercase tracking-tight">{group.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg md:text-xl font-black text-[var(--text-main)] uppercase tracking-tight">{group.name}</span>
+                          {group.isHolding && (
+                            <span className="bg-[var(--accent)]/10 text-[var(--accent)] text-[9px] px-2 py-0.5 rounded-md font-bold border border-[var(--accent)]/20">
+                              仍持倉中
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold tracking-widest">{ticker}</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={cn("text-lg md:text-xl font-mono font-black block", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                        {group.cumulativeProfit >= 0 ? '+' : ''}{(group.cumulativeProfit || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <div className="flex flex-col items-end">
+                        <span className={cn("text-lg md:text-xl font-mono font-black", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                          {group.cumulativeProfit >= 0 ? '+' : ''}{(group.cumulativeProfit || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                        {group.cumulativeCost > 0 && (
+                          <div className={cn("text-[10px] font-bold flex items-center gap-1", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                            {group.cumulativeProfit >= 0 ? '▲' : '▼'} {((group.cumulativeProfit / group.cumulativeCost) * 100).toFixed(2)}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Header Metrics */}
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border)] mt-2">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">累積總成本</span>
+                      <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                        ${(group.cumulativeCost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">累積總收入</span>
+                      <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                        ${(group.cumulativeRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
                   </div>

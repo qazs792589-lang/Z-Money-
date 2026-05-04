@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Reorder, useDragControls } from 'framer-motion';
+import { Reorder, useDragControls } from 'motion/react';
 import { Database, Activity, X, GripVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -88,24 +88,28 @@ export const TickerPillList: React.FC<TickerPillListProps> = ({
   stockMap, holdingsMap, onRenameTicker, onDeleteTicker, onImportBackup, onUpdateMarket,
   isEditing, allTickers
 }) => {
-  const sortedTickers = useMemo(() => {
-    const active = allTickers.filter(t => (holdingsMap[t]?.currentShares || 0) > 0);
-    const zero = allTickers.filter(t => (holdingsMap[t]?.currentShares || 0) <= 0);
-    const currentOrder = tickerOrder.filter(t => allTickers.includes(t));
-    const unorganizedActive = active.filter(t => !tickerOrder.includes(t)).sort();
-    const unorganizedZero = zero.filter(t => !tickerOrder.includes(t)).sort();
-    return [...currentOrder, ...unorganizedActive, ...unorganizedZero];
-  }, [allTickers, holdingsMap, tickerOrder]);
+  // Sync tickerOrder with allTickers to ensure every ticker is representable in the reorder group
+  const effectiveOrder = useMemo(() => {
+    const safeOrder = tickerOrder || [];
+    const safeAll = allTickers || [];
+    const order = [...safeOrder];
+    // Add missing tickers to the end
+    safeAll.forEach(t => {
+      if (!order.includes(t)) order.push(t);
+    });
+    // Remove deleted tickers
+    return order.filter(t => safeAll.includes(t));
+  }, [allTickers, tickerOrder]);
 
   return (
     <div className="w-full relative pb-6 pt-2">
       <Reorder.Group 
         axis="x" 
-        values={sortedTickers} 
+        values={effectiveOrder} 
         onReorder={setTickerOrder} 
         className="flex gap-2 min-w-max px-1"
       >
-        {sortedTickers.map(ticker => (
+        {effectiveOrder.map(ticker => (
           <DraggablePill
             key={ticker}
             ticker={ticker}
