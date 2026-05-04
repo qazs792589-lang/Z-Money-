@@ -455,28 +455,28 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           </div>
 
           {/* Page 3: ROI Benchmark Redesigned */}
-          <div className="w-full shrink-0 px-1 space-y-8">
+          <div className="w-full shrink-0 px-0.5 space-y-4 md:space-y-8">
             {/* Header Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="elegant-card bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--accent)]/30">
-                <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">累積超額報酬 (Alpha)</span>
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="elegant-card p-3 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--accent)]/30">
+                <span className="text-[8px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">累積超額報酬 (Alpha)</span>
                 <p className={cn(
-                  "text-2xl font-mono font-black",
+                  "text-lg md:text-2xl font-mono font-black",
                   (chartData[chartData.length - 1]?.portfolioRoi - chartData[chartData.length - 1]?.marketRoi) >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"
                 )}>
                   {((chartData[chartData.length - 1]?.portfolioRoi || 0) - (chartData[chartData.length - 1]?.marketRoi || 0)).toFixed(2)}%
                 </p>
               </div>
-              <div className="elegant-card bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)]">
-                <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">投資組合勝率</span>
-                <p className="text-2xl font-mono font-black text-[var(--text-main)]">
+              <div className="elegant-card p-3 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)]">
+                <span className="text-[8px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">投資組合勝率</span>
+                <p className="text-lg md:text-2xl font-mono font-black text-[var(--text-main)]">
                   {((chartData.filter(d => d.portfolioRoi > d.marketRoi).length / (chartData.length || 1)) * 100).toFixed(0)}%
                 </p>
               </div>
             </div>
 
-            <div className="elegant-card p-0 overflow-hidden relative border-[var(--border)] shadow-2xl">
-              <div className="p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="elegant-card p-0 overflow-hidden relative border-[var(--border)] shadow-xl">
+              <div className="p-4 md:p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg-primary)]">
@@ -513,9 +513,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </div>
               </div>
               
-              <div className="h-[420px] relative px-2 pb-4">
+              <div className="h-[320px] md:h-[420px] relative px-1 md:px-2 pb-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 20, bottom: 20 }}>
+                  <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 15, bottom: 20 }}>
                     <defs>
                       <linearGradient id="colorRoi" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
@@ -526,7 +526,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <XAxis 
                       dataKey="name" 
                       stroke="var(--text-dim)" 
-                      fontSize={9} 
+                      fontSize={8} 
                       axisLine={false} 
                       tickLine={false} 
                       tickMargin={15}
@@ -537,11 +537,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       yAxisId="left"
                       type="number"
                       stroke="var(--accent)" 
-                      fontSize={10} 
+                      fontSize={8} 
                       axisLine={false} 
                       tickLine={false} 
-                      tickMargin={10} 
-                      width={60}
+                      tickMargin={8} 
+                      width={45}
                       domain={['auto', 'auto']}
                       tickFormatter={(v) => {
                         const val = Number(v);
@@ -558,11 +558,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         orientation="right"
                         type="number"
                         stroke="var(--text-dim)" 
-                        fontSize={10} 
+                        fontSize={8} 
                         axisLine={false} 
                         tickLine={false} 
-                        tickMargin={10} 
-                        width={60}
+                        tickMargin={8} 
+                        width={45}
                         domain={['auto', 'auto']}
                         tickFormatter={(v) => Number(v).toLocaleString()}
                       />
@@ -659,12 +659,12 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">大盤基準數據管理</h4>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 items-end">
                 <div className="space-y-2">
                   <label className="elegant-label">記錄日期</label>
                   <input 
                     type="date" 
-                    className="elegant-input text-xs h-11"
+                    className="elegant-input text-[11px] h-10 md:h-11 px-2"
                     value={mDate}
                     onChange={(e) => setMDate(e.target.value)}
                   />
@@ -673,8 +673,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   <label className="elegant-label">大盤點數</label>
                   <input 
                     type="number" 
-                    className="elegant-input text-xs h-11"
-                    placeholder="例如: 23035"
+                    className="elegant-input text-[11px] h-10 md:h-11 px-2"
+                    placeholder="點數"
                     value={mPrice}
                     onChange={(e) => setMPrice(e.target.value)}
                   />
@@ -690,7 +690,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     setMPrice('');
                     alert('大盤點數已成功記錄！');
                   }}
-                  className="bg-[var(--accent)] text-[var(--bg-primary)] h-11 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-[var(--accent-glow)]"
+                  className="col-span-2 md:col-span-1 bg-[var(--accent)] text-[var(--bg-primary)] h-10 md:h-11 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-[var(--accent-glow)]"
                 >
                   儲存數據
                 </button>

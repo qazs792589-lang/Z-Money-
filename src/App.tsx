@@ -117,12 +117,12 @@ export default function App() {
         { date: '2025-06-27', ticker: '^TWII', price: 27200 },
         { date: '2025-09-26', ticker: '^TWII', price: 28100 },
         { date: '2025-12-26', ticker: '^TWII', price: 28963 },
-        { date: '2026-01-02', ticker: '^TWII', price: 29500 },
-        { date: '2026-01-30', ticker: '^TWII', price: 32500 },
-        { date: '2026-02-27', ticker: '^TWII', price: 35500 },
-        { date: '2026-03-27', ticker: '^TWII', price: 38500 },
-        { date: '2026-04-24', ticker: '^TWII', price: 41200 },
-        { date: '2026-05-01', ticker: '^TWII', price: 42000 }
+        { date: '2026-01-02', ticker: '^TWII', price: 28500 },
+        { date: '2026-01-30', ticker: '^TWII', price: 30500 },
+        { date: '2026-02-27', ticker: '^TWII', price: 33500 },
+        { date: '2026-03-27', ticker: '^TWII', price: 37500 },
+        { date: '2026-04-24', ticker: '^TWII', price: 39500 },
+        { date: '2026-05-04', ticker: '^TWII', price: 40705 }
       ];
       return [...initial, ...benchmarkData].sort((a, b) => a.date.localeCompare(b.date));
     }
