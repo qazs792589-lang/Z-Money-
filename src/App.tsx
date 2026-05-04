@@ -362,9 +362,9 @@ export default function App() {
       alert('目前沒有交易資料可供匯出。');
       return;
     }
-    const headers = "日期,股票代號,股票名稱,交易種類,數量,成交單價,類別,手續費,稅金,交易總額,備註\n";
+    const headers = "日期,股票代號,股票名稱,交易種類,數量,成交單價,類別,手續費,稅金,交易總額,備註,已實現標記\n";
     const rows = transactions.map(tx =>
-      `${tx.date},${tx.ticker},"${tx.name}",${tx.direction},${tx.quantity},${tx.unitPrice},${tx.category},${tx.fee},${tx.tax},${tx.totalAmount},"${tx.notes || ''}"`
+      `${tx.date},${tx.ticker},"${tx.name}",${tx.direction},${tx.quantity},${tx.unitPrice},${tx.category},${tx.fee},${tx.tax},${tx.totalAmount},"${tx.notes || ''}",${tx.isManualRealized ?? ''}`
     ).join("\n");
 
     const blob = new Blob(["\uFEFF" + headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -402,7 +402,8 @@ export default function App() {
             fee: parseFloat(parts[7]),
             tax: parseFloat(parts[8]),
             totalAmount: parseFloat(parts[9]),
-            notes: parts[10] || ''
+            notes: parts[10] || '',
+            isManualRealized: parts[11] === 'true' ? true : parts[11] === 'false' ? false : undefined
           };
         });
 
@@ -416,6 +417,48 @@ export default function App() {
         }
       } catch (err) {
         alert('匯入失敗，請檢查 CSV 格式是否正確。');
+      }
+    };
+    reader.readAsText(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleExportFullJson = () => {
+    const fullData = {
+      transactions,
+      tickerOrder,
+      netWorthEntries,
+      weeklyPrices,
+      theme,
+      marketData
+    };
+    const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Z-Money-FullBackup-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
+
+  const handleImportFullJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (window.confirm('確定要恢復全系統備份嗎？這將會覆蓋目前的「所有」資料。')) {
+          if (data.transactions) setTransactions(data.transactions);
+          if (data.tickerOrder) setTickerOrder(data.tickerOrder);
+          if (data.netWorthEntries) setNetWorthEntries(data.netWorthEntries);
+          if (data.weeklyPrices) setWeeklyPrices(data.weeklyPrices);
+          if (data.theme) setTheme(data.theme);
+          if (data.marketData) setMarketData(data.marketData);
+          alert('系統資料恢復完成！頁面即將重新載入。');
+          window.location.reload();
+        }
+      } catch (err) {
+        alert('解析備份檔案失敗。');
       }
     };
     reader.readAsText(file);
@@ -1356,31 +1399,31 @@ export default function App() {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <button
-                      onClick={handleExportBackupCsv}
-                      className="flex flex-col items-center gap-3 p-6 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] transition-all group"
+                      onClick={handleExportFullJson}
+                      className="flex flex-col items-center gap-3 p-6 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] transition-all group shadow-lg"
                     >
                       <div className="p-3 bg-[var(--accent)]/10 rounded-full text-[var(--accent)] group-hover:scale-110 transition-transform">
                         <FileUp size={20} />
                       </div>
                       <div className="text-center">
-                        <div className="text-xs font-black">匯出備份 (CSV)</div>
-                        <div className="text-[9px] text-[var(--text-dim)] mt-1">下載所有交易紀錄</div>
+                        <div className="text-xs font-black">匯出全系統備份</div>
+                        <div className="text-[9px] text-[var(--text-dim)] mt-1">最完整！搬家與永久存檔專用</div>
                       </div>
                     </button>
 
-                    <label className="flex flex-col items-center gap-3 p-6 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] cursor-pointer transition-all group">
+                    <label className="flex flex-col items-center gap-3 p-6 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] cursor-pointer transition-all group shadow-lg">
                       <input
                         type="file"
-                        accept=".csv"
+                        accept=".json"
                         className="hidden"
-                        onChange={handleImportBackupCsv}
+                        onChange={handleImportFullJson}
                       />
                       <div className="p-3 bg-[var(--accent)]/10 rounded-full text-[var(--accent)] group-hover:scale-110 transition-transform">
                         <History size={20} />
                       </div>
                       <div className="text-center">
-                        <div className="text-xs font-black">匯入備份 (CSV)</div>
-                        <div className="text-[9px] text-[var(--text-dim)] mt-1">從備份檔恢復數據</div>
+                        <div className="text-xs font-black">匯入系統還原</div>
+                        <div className="text-[9px] text-[var(--text-dim)] mt-1">完全覆蓋並恢復所有資料</div>
                       </div>
                     </label>
                   </div>
