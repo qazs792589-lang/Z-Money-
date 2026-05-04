@@ -323,10 +323,10 @@ export default function App() {
       return;
     }
     const headers = "日期,股票代號,股票名稱,交易種類,數量,成交單價,類別,手續費,稅金,交易總額,備註\n";
-    const rows = transactions.map(tx => 
+    const rows = transactions.map(tx =>
       `${tx.date},${tx.ticker},"${tx.name}",${tx.direction},${tx.quantity},${tx.unitPrice},${tx.category},${tx.fee},${tx.tax},${tx.totalAmount},"${tx.notes || ''}"`
     ).join("\n");
-    
+
     const blob = new Blob(["\uFEFF" + headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -346,7 +346,7 @@ export default function App() {
         const text = event.target?.result as string;
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
         if (lines.length < 2) return;
-        
+
         const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
         const newTxs: Transaction[] = lines.slice(1).map(line => {
           const parts = line.split(csvRegex).map(p => p.trim().replace(/"/g, ''));
@@ -365,7 +365,7 @@ export default function App() {
             notes: parts[10] || ''
           };
         });
-        
+
         if (window.confirm(`確定要匯入這 ${newTxs.length} 筆備份資料嗎？\n這將會與現有資料合併。`)) {
           setTransactions(prev => {
             const existingIds = new Set(prev.map(tx => tx.id));
@@ -593,7 +593,7 @@ export default function App() {
   };
 
   const handleToggleUncleared = (txId: string) => {
-    setTransactions(prev => prev.map(tx => 
+    setTransactions(prev => prev.map(tx =>
       tx.id === txId ? { ...tx, isUncleared: !tx.isUncleared } : tx
     ));
   };
@@ -1019,19 +1019,19 @@ export default function App() {
                                   <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">歷史交易明細表</span>
                                   <span className="text-[9px] font-mono text-[var(--text-dim)] border border-[var(--border)] px-2 py-0.5 rounded italic opacity-50">{txs.length} 筆資料</span>
                                 </div>
-                                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                                    <AnimatePresence initial={false}>
-                                      {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
-                                        <TransactionRow
-                                          key={tx.id}
-                                          tx={tx}
-                                          onEdit={handleEditTx}
-                                          onDelete={handleDeleteTransaction}
-                                          onToggleRealized={handleToggleRealized}
-                                        />
-                                      ))}
-                                    </AnimatePresence>
-                                  </div>
+                                <div className="">
+                                  <AnimatePresence initial={false}>
+                                    {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                                      <TransactionRow
+                                        key={tx.id}
+                                        tx={tx}
+                                        onEdit={handleEditTx}
+                                        onDelete={handleDeleteTransaction}
+                                        onToggleRealized={handleToggleRealized}
+                                      />
+                                    ))}
+                                  </AnimatePresence>
+                                </div>
                               </div>
 
                               <div className="p-4 md:p-8 bg-[var(--bg-primary)] border-t border-[var(--border)]">
@@ -1086,7 +1086,7 @@ export default function App() {
                                   }}
                                 >新增紀錄</button>
                               </div>
-                              <div className="space-y-2 mt-4 max-h-40 overflow-y-auto">
+                              <div className="space-y-2 mt-4">
                                 {weeklyPrices.filter(wp => wp.ticker === ticker)
                                   .sort((a, b) => b.date.localeCompare(a.date))
                                   .map((wp, i) => {
@@ -1211,7 +1211,7 @@ export default function App() {
                 {/* PIN Settings */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
-                    <Shield size={16} className="text-[var(--accent)]" /> 
+                    <Shield size={16} className="text-[var(--accent)]" />
                     {appPassword ? '修改 PIN 碼鎖' : '啟用 PIN 碼鎖'}
                   </h3>
                   <div className="p-4 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)]">
@@ -1261,7 +1261,7 @@ export default function App() {
                 {/* Backup & Recovery */}
                 <div className="pt-6 border-t border-[var(--border)] space-y-4">
                   <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
-                    <Database size={16} className="text-[var(--accent)]" /> 
+                    <Database size={16} className="text-[var(--accent)]" />
                     數據備份與恢復
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
