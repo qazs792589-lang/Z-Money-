@@ -2,20 +2,21 @@ import { History, FileUp, Edit2, Check, ChevronRight, ChevronDown, Clock, PieCha
 import React, { useState, useMemo } from 'react';
 import { cn } from '../lib/utils';
 import { RealizedProfit, Transaction } from '../types';
+import { isTxRealized } from '../lib/txUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 interface RealizedViewProps {
   appData: any;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUpdateNotes: (txId: string, notes: string) => void;
-  onToggleUncleared: (txId: string) => void;
+  onToggleRealized: (txId: string) => void;
   netWorthEntries: {date: string, cash: number, crypto: number}[];
   setNetWorthEntries: React.Dispatch<React.SetStateAction<{date: string, cash: number, crypto: number}[]>>;
   historicalChartData: any[];
 }
 
 export const RealizedView: React.FC<RealizedViewProps> = ({ 
-  appData, onImport, onUpdateNotes, onToggleUncleared, 
+  appData, onImport, onUpdateNotes, onToggleRealized, 
   netWorthEntries, setNetWorthEntries, historicalChartData = []
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -250,7 +251,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                       </thead>
                       <tbody className="divide-y divide-[var(--border)]">
                         {group.transactions.map((tx: any) => (
-                          <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", tx.isUncleared && "bg-[var(--bg-tertiary)]")}>
+                          <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]")}>
                             <td className="px-6 py-3 font-mono text-xs">{tx.date}</td>
                             <td className="px-6 py-3 font-mono text-xs">{(tx.quantity || 0).toLocaleString()}</td>
                             <td className="px-6 py-3 font-mono text-xs">${(tx.totalAmount || 0).toLocaleString()}</td>
@@ -265,9 +266,30 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                               ) : '-'}
                             </td>
                             <td className="px-6 py-3 text-right">
-                              <div className="text-[10px] text-[var(--text-dim)] italic truncate max-w-[120px] ml-auto">
-                                {tx.notes || '-'}
-                              </div>
+                              {editingId === tx.id ? (
+                                <input
+                                  autoFocus
+                                  className="elegant-input text-[10px] h-7 px-2 w-full max-w-[150px] ml-auto"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={() => saveEdit(tx.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEdit(tx.id);
+                                    if (e.key === 'Escape') setEditingId(null);
+                                  }}
+                                />
+                              ) : (
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEditing(tx.id, tx.notes || '');
+                                  }}
+                                  className="text-[10px] text-[var(--text-dim)] italic truncate max-w-[150px] ml-auto cursor-pointer hover:text-[var(--accent)] transition-colors"
+                                  title="點擊編輯備註"
+                                >
+                                  {tx.notes || <span className="opacity-30">新增備註...</span>}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}

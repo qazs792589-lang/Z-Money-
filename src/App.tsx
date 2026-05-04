@@ -1278,7 +1278,7 @@ export default function App() {
               appData={appData}
               onImport={handleHistoryCsvImport}
               onUpdateNotes={handleUpdateTransactionNotes}
-              onToggleUncleared={handleToggleUncleared}
+              onToggleRealized={handleToggleRealized}
               netWorthEntries={netWorthEntries}
               setNetWorthEntries={setNetWorthEntries}
               historicalChartData={chartData}
