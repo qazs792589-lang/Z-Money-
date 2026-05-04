@@ -101,7 +101,32 @@ export default function App() {
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>(() => {
     const saved = localStorage.getItem('z_money_weekly_prices');
-    return saved ? JSON.parse(saved) : [];
+    const initial = saved ? JSON.parse(saved) : [];
+    
+    // Inject benchmark data if ^TWII is missing
+    const hasBenchmark = initial.some((p: any) => p.ticker === '^TWII');
+    if (!hasBenchmark) {
+      const benchmarkData = [
+        { date: '2024-01-05', ticker: '^TWII', price: 17519 },
+        { date: '2024-03-29', ticker: '^TWII', price: 20294 },
+        { date: '2024-06-28', ticker: '^TWII', price: 23032 },
+        { date: '2024-09-27', ticker: '^TWII', price: 22822 },
+        { date: '2024-12-27', ticker: '^TWII', price: 23035 },
+        { date: '2025-01-03', ticker: '^TWII', price: 23500 },
+        { date: '2025-03-28', ticker: '^TWII', price: 25800 },
+        { date: '2025-06-27', ticker: '^TWII', price: 27200 },
+        { date: '2025-09-26', ticker: '^TWII', price: 28100 },
+        { date: '2025-12-26', ticker: '^TWII', price: 28963 },
+        { date: '2026-01-02', ticker: '^TWII', price: 29500 },
+        { date: '2026-01-30', ticker: '^TWII', price: 32500 },
+        { date: '2026-02-27', ticker: '^TWII', price: 35500 },
+        { date: '2026-03-27', ticker: '^TWII', price: 38500 },
+        { date: '2026-04-24', ticker: '^TWII', price: 41200 },
+        { date: '2026-05-01', ticker: '^TWII', price: 42000 }
+      ];
+      return [...initial, ...benchmarkData].sort((a, b) => a.date.localeCompare(b.date));
+    }
+    return initial;
   });
   const [tickerOrder, setTickerOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem('z_money_ticker_order');
@@ -498,10 +523,56 @@ export default function App() {
         value: Math.floor(totalValue),
         cost: Math.floor(totalCost),
         profit: Math.floor(totalValue - totalCost),
+        portfolioRoi: totalCost > 0 ? ((totalValue / totalCost) - 1) * 100 : 0,
         breakdown
       };
     });
   }, [appData.stockGroups, weeklyPrices]);
+
+  const finalChartData = useMemo(() => {
+    // 1. Filter raw chartData to start from 2026
+    const filteredBaseData = chartData.filter(d => d.name >= '2026-01-01');
+    if (filteredBaseData.length === 0) return [];
+    
+    // 2. Calculate Market ROI (TAIEX) relative to the NEW first date
+    const benchmarkPrices = weeklyPrices.filter(p => p.ticker === '^TWII').sort((a, b) => a.date.localeCompare(b.date));
+    const firstDate = filteredBaseData[0].name;
+    const baseMarketPriceEntry = benchmarkPrices.filter(p => p.date <= firstDate).reverse()[0] || benchmarkPrices[0];
+    const baseMarketPrice = baseMarketPriceEntry?.price || 1;
+
+    // 3. Calculate Portfolio TWR (Unitized NAV)
+    let nav = 100;
+    let prevTotalValue = filteredBaseData[0].value;
+
+    return filteredBaseData.map((d, idx) => {
+      const currentTxs = transactions.filter(t => t.date === d.name);
+      let cashFlow = 0;
+      currentTxs.forEach(t => {
+        if (t.direction === 'BUY') cashFlow += t.totalAmount;
+        if (t.direction === 'SELL') cashFlow -= t.totalAmount;
+        if (t.direction === 'DIVIDEND') cashFlow -= t.totalAmount;
+      });
+
+      const currentMarketEntry = benchmarkPrices.filter(p => p.date <= d.name).reverse()[0] || benchmarkPrices[0];
+      const currentMarketPrice = currentMarketEntry?.price || baseMarketPrice;
+      const marketRoi = ((currentMarketPrice / baseMarketPrice) - 1) * 100;
+
+      if (idx > 0) {
+        const valueBeforeCashflow = d.value - cashFlow;
+        if (prevTotalValue > 0) {
+          nav = nav * (valueBeforeCashflow / prevTotalValue);
+        }
+        prevTotalValue = d.value;
+      }
+
+      return {
+        ...d,
+        portfolioRoi: nav - 100,
+        marketRoi,
+        marketPrice: currentMarketPrice
+      };
+    });
+  }, [chartData, weeklyPrices, transactions]);
 
   const handleAddTransaction = () => {
     if (!formData.ticker || formData.unitPrice < 0 || formData.quantity <= 0) return;
@@ -1176,13 +1247,14 @@ export default function App() {
           {activeView === 'B' && (
             <PortfolioView
               stats={stats}
-              chartData={chartData}
+              chartData={finalChartData}
               appData={appData}
               marketData={marketData}
               weeklyPrices={weeklyPrices}
               setSelectedTicker={setSelectedTicker}
               setActiveView={setActiveView}
               tickerOrder={tickerOrder}
+              setWeeklyPrices={setWeeklyPrices}
             />
           )}
 
