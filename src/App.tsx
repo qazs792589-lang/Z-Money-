@@ -678,7 +678,8 @@ export default function App() {
       name: '',
       unitPrice: 0,
       quantity: 1000,
-      notes: ''
+      notes: '',
+      manualFee: ''
     }));
   };
 
@@ -744,6 +745,7 @@ export default function App() {
       category: tx.category,
       customFee: tx.fee,
       customTax: tx.tax,
+      manualFee: tx.fee,
       notes: tx.notes || ''
     });
     setActiveView('A');
@@ -1023,7 +1025,16 @@ export default function App() {
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-end">
                         <div className="flex flex-col">
                           <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-tighter mb-1 font-bold">{preview.feeLabel}</span>
-                          <span className="text-2xl font-mono text-[var(--text-main)] font-black">${preview.fee.toLocaleString()}</span>
+                          <div className="relative group">
+                            <input 
+                              type="number"
+                              className="bg-transparent border-none p-0 text-2xl font-mono text-[var(--text-main)] font-black w-full focus:outline-none focus:ring-0 placeholder:opacity-20"
+                              value={formData.manualFee}
+                              placeholder={preview.autoFee?.toString()}
+                              onChange={(e) => setFormData({ ...formData, manualFee: e.target.value })}
+                            />
+                            <div className="absolute bottom-0 left-0 w-full h-px bg-[var(--accent)] opacity-10 group-hover:opacity-40 transition-opacity" />
+                          </div>
                         </div>
 
                         <div className="flex flex-col text-right lg:text-left">

@@ -11,7 +11,8 @@ export const useTransactionForm = (configs: Record<TransactionCategory, Config>)
     unitPrice: 0,
     category: 'General' as TransactionCategory,
     customFee: 0,
-    customTax: 0
+    customTax: 0,
+    manualFee: '' as string | number // Added for manual override
   });
 
   const preview = useMemo(() => {
@@ -33,22 +34,32 @@ export const useTransactionForm = (configs: Record<TransactionCategory, Config>)
       };
     }
 
-    if (formData.category === 'Custom') {
+    // Calculate auto fee first
+    const feeRate = formData.direction === 'BUY' ? config.buyFeeRate : config.sellFeeRate;
+    const autoFee = Math.max(config.minFee, Math.floor(subtotal * feeRate * config.discount));
+
+    // Use manual fee if provided, otherwise use auto/custom logic
+    if (formData.manualFee !== '') {
+      fee = parseFloat(formData.manualFee as string) || 0;
+    } else if (formData.category === 'Custom') {
       fee = formData.customFee;
       tax = formData.customTax;
     } else {
-      const feeRate = formData.direction === 'BUY' ? config.buyFeeRate : config.sellFeeRate;
-      fee = Math.max(config.minFee, Math.floor(subtotal * feeRate * config.discount));
+      fee = autoFee;
       tax = formData.direction === 'SELL' ? Math.floor(subtotal * config.taxRate) : 0;
     }
     const total = formData.direction === 'BUY' ? subtotal + fee + tax : -(subtotal - fee - tax);
 
     // Formulas strings for display
-    const feeFormula = `max(${config.minFee}, floor(${subtotal.toLocaleString()} × ${formData.direction === 'BUY' ? config.buyFeeRate : config.sellFeeRate} × ${config.discount}))`;
+    const feeFormula = formData.manualFee !== '' 
+      ? `手動輸入: ${fee.toLocaleString()}` 
+      : `max(${config.minFee}, floor(${subtotal.toLocaleString()} × ${formData.direction === 'BUY' ? config.buyFeeRate : config.sellFeeRate} × ${config.discount}))`;
     const taxFormula = formData.direction === 'SELL' ? `floor(${subtotal.toLocaleString()} × ${config.taxRate})` : '免徵';
 
     // Plain language explanations
-    const feeFormulaPlain = formData.direction === 'DIVIDEND'
+    const feeFormulaPlain = formData.manualFee !== ''
+      ? `已使用手動輸入的手續費 $${fee.toLocaleString()}。`
+      : formData.direction === 'DIVIDEND'
       ? '股息領取無需付給券商手續費'
       : fee === config.minFee
         ? `手續費不足 ${config.minFee} 元，以最低 ${config.minFee} 元計收。`
@@ -58,10 +69,10 @@ export const useTransactionForm = (configs: Record<TransactionCategory, Config>)
       ? `賣出金額 $${subtotal.toLocaleString()} 乘以稅率 ${(config.taxRate * 100).toFixed(2)}%。`
       : formData.direction === 'BUY' ? '只有在賣出股票時才需要繳納證交稅。' : '免徵稅';
 
-    const feeLabel = `手續費 (${(config.discount * 10).toFixed(1)}折)`;
+    const feeLabel = formData.manualFee !== '' ? '手續費 (手動)' : `手續費 (${(config.discount * 10).toFixed(1)}折)`;
     const taxLabel = `證券交易稅 (${(config.taxRate * 100).toFixed(2)}%)`;
 
-    return { fee, tax, total, feeFormula, taxFormula, feeLabel, taxLabel, feeFormulaPlain, taxFormulaPlain };
+    return { fee, tax, total, feeFormula, taxFormula, feeLabel, taxLabel, feeFormulaPlain, taxFormulaPlain, autoFee };
   }, [formData, configs]);
 
   return { formData, setFormData, preview };

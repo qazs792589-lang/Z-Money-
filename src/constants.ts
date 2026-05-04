@@ -7,7 +7,7 @@ export const DEFAULT_CONFIGS: Record<TransactionCategory, Config> = {
     sellFeeRate: 0.001425,
     taxRate: 0.003,
     minFee: 20,
-    discount: 0.6
+    discount: 0.2
   },
   ETF: {
     category: 'ETF',
@@ -15,7 +15,7 @@ export const DEFAULT_CONFIGS: Record<TransactionCategory, Config> = {
     sellFeeRate: 0.001425,
     taxRate: 0.001,
     minFee: 20,
-    discount: 0.6
+    discount: 0.2
   },
   DayTrade: {
     category: 'DayTrade',
@@ -23,7 +23,7 @@ export const DEFAULT_CONFIGS: Record<TransactionCategory, Config> = {
     sellFeeRate: 0.001425,
     taxRate: 0.0015,
     minFee: 20,
-    discount: 0.6
+    discount: 0.2
   },
   Custom: {
     category: 'Custom',
