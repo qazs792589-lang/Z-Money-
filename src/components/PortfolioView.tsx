@@ -78,19 +78,25 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="stat-box">
-            <div className="stat-label">總投入本金</div>
-            <div className="stat-value text-[var(--text-main)] text-xl">${stats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+          <div className="stat-box group hover:border-[var(--accent)] transition-all duration-300">
+            <div className="stat-label flex items-center gap-2">
+              <TrendingUp size={12} className="opacity-50" /> 總投入本金
+            </div>
+            <div className="stat-value text-[var(--text-main)] text-2xl font-mono">${stats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           </div>
-          <div className="stat-box border-[var(--accent)]/50">
-            <div className="stat-label">當前總市值 (含息)</div>
-            <div className="stat-value text-[var(--accent)] text-xl">${stats.totalMarketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+          <div className="stat-box border-[var(--accent)]/50 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] shadow-[0_0_20px_var(--accent-glow)]">
+            <div className="stat-label flex items-center gap-2">
+              <PieChartIcon size={12} className="text-[var(--accent)]" /> 當前總市值 (含息)
+            </div>
+            <div className="stat-value text-[var(--accent)] text-2xl font-mono">${stats.totalMarketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           </div>
-          <div className={cn("stat-box", stats.unrealizedPL >= 0 ? "border-[var(--success)]/50" : "border-[var(--danger)]/50")}>
-            <div className="stat-label">帳面總損益 (含息)</div>
-            <div className={cn("stat-value text-xl", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+          <div className={cn("stat-box transition-all duration-500", stats.unrealizedPL >= 0 ? "border-[var(--success)]/50 shadow-[0_0_15px_rgba(255,69,58,0.1)]" : "border-[var(--danger)]/50 shadow-[0_0_15px_rgba(50,215,75,0.1)]")}>
+            <div className="stat-label flex items-center gap-2">
+              <Activity size={12} className={stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"} /> 帳面總損益 (含息)
+            </div>
+            <div className={cn("stat-value text-2xl font-mono", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
               {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              <span className="text-xs ml-2 opacity-60">({stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%)</span>
+              <span className="text-xs ml-2 opacity-60 font-sans tracking-normal">({stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%)</span>
             </div>
           </div>
         </div>
@@ -201,8 +207,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   const hpl = (curPrice - h.avgCost) * h.currentShares;
                   const hroi = h.avgCost > 0 ? (hpl / h.totalInvested) * 100 : 0;
                   return (
-                    <div key={h.ticker} className="elegant-card p-6 md:p-8 hover:border-[var(--accent)] transition-all group relative shadow-2xl">
-                      <div className="flex justify-between items-start mb-8">
+                    <div key={h.ticker} className="elegant-card p-5 md:p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-[var(--border)] hover:border-[var(--accent)] transition-all group relative">
+                      <div className="flex justify-between items-start mb-6">
                         <div>
                           <div className="flex items-center gap-3 mb-2">
                             <h4 className="text-2xl font-black text-[var(--text-main)] leading-none tracking-tight">{h.name}</h4>
@@ -252,48 +258,82 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
           {/* Page 2: Trend & Matrix */}
           <div className="w-full shrink-0 px-1 space-y-10">
-            <div className="elegant-card p-0 overflow-hidden relative">
-              <div className="absolute top-5 left-5 z-10">
-                <h3 className="text-[10px] font-black opacity-60 flex items-center gap-2 uppercase tracking-[0.2em] text-[var(--accent)]">
-                  <Activity size={12} /> 資產價值趨勢
+            <div className="elegant-card p-0 overflow-hidden relative border-[var(--border)] shadow-2xl">
+              <div className="p-5 pb-0 flex items-center justify-between">
+                <h3 className="text-[11px] font-black opacity-80 flex items-center gap-2 uppercase tracking-[0.2em] text-[var(--text-main)]">
+                  <div className="p-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <Activity size={14} />
+                  </div>
+                  資產價值趨勢
                 </h3>
               </div>
-              <div className="h-[320px] relative mt-4">
+              <div className="h-[340px] relative px-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 15, right: 5, left: -20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
                     <XAxis 
                       dataKey="name" 
                       stroke="var(--text-dim)" 
                       fontSize={9} 
                       axisLine={false} 
                       tickLine={false} 
-                      tickMargin={10}
-                      minTickGap={30}
+                      tickMargin={12}
+                      minTickGap={40}
                       tickFormatter={(str) => str.split('-').slice(1).join('/')}
                     />
-                    <YAxis yAxisId="left" stroke="var(--text-dim)" fontSize={9} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickMargin={5} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                    <YAxis yAxisId="right" orientation="right" stroke="var(--success)" fontSize={9} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickMargin={5} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} width={35} />
+                    <YAxis 
+                      yAxisId="left" 
+                      stroke="var(--text-dim)" 
+                      fontSize={9} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      domain={['auto', 'auto']} 
+                      tickMargin={8} 
+                      tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} 
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      stroke="var(--text-dim)" 
+                      fontSize={9} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      domain={['auto', 'auto']} 
+                      tickMargin={8} 
+                      tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} 
+                      width={40}
+                    />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           const originalPoint = chartData.find(d => d.name === label) || payload[0].payload;
                           return (
-                            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-3 rounded-xl shadow-2xl backdrop-blur-md">
-                              <div className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] pb-2 mb-2">{label?.toString().replace(/-/g, '/')}</div>
-                              <div className="space-y-1.5">
+                            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-4 rounded-2xl shadow-2xl backdrop-blur-xl bg-opacity-80">
+                              <div className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] pb-2.5 mb-2.5 flex items-center justify-between gap-4">
+                                <span>{label?.toString().replace(/-/g, '/')}</span>
+                                <span className="opacity-40 font-mono font-normal">WEEKLY REPORT</span>
+                              </div>
+                              <div className="space-y-2">
                                 {[
-                                  { label: '市值', value: originalPoint.value, color: 'var(--text-main)' },
+                                  { label: '市值', value: originalPoint.value, color: 'var(--accent)' },
                                   { label: '成本', value: originalPoint.cost, color: 'var(--danger)' }
                                 ].sort((a, b) => b.value - a.value).map((item, idx) => (
-                                  <div key={idx} className="flex items-center justify-between gap-8" style={{ color: item.color === 'var(--text-main)' ? undefined : item.color }}>
-                                    <span className={cn("text-[11px] font-bold", item.color === 'var(--text-main)' ? "text-[var(--text-dim)]" : "opacity-80")}>{item.label}</span>
-                                    <span className={cn("text-xs font-mono font-black", item.color === 'var(--text-main)' ? "text-[var(--text-main)]" : "")}>${item.value.toLocaleString()}</span>
+                                  <div key={idx} className="flex items-center justify-between gap-10">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                      <span className="text-[11px] font-bold text-[var(--text-dim)]">{item.label}</span>
+                                    </div>
+                                    <span className="text-xs font-mono font-black text-[var(--text-main)]">${item.value.toLocaleString()}</span>
                                   </div>
                                 ))}
-                                <div className="flex items-center justify-between gap-8 text-[var(--success)] border-t border-[var(--border)] pt-1.5 mt-1.5">
-                                  <span className="text-[11px] font-bold opacity-80">盈虧</span>
-                                  <span className="text-xs font-mono font-black">${originalPoint.profit.toLocaleString()}</span>
+                                <div className="flex items-center justify-between gap-10 border-t border-[var(--border)] pt-2 mt-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                                    <span className="text-[11px] font-bold text-[var(--text-dim)]">盈虧</span>
+                                  </div>
+                                  <span className={cn("text-xs font-mono font-black", originalPoint.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                                    {originalPoint.profit >= 0 ? '+' : ''}{originalPoint.profit.toLocaleString()}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -302,42 +342,55 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         return null;
                       }}
                     />
-                    <Legend layout="vertical" verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', opacity: 0.6, top: 0, right: 0 }} />
-                    <Line 
-                      yAxisId="left" 
-                      type="monotone" 
-                      name="當前總市值 (含息)" 
-                      dataKey={(d) => {
-                        const idx = chartData.indexOf(d);
-                        const win = 5;
-                        const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
-                        return subset.reduce((acc, curr) => acc + curr.value, 0) / subset.length;
-                      }}
-                      stroke="var(--accent)" strokeWidth={3} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--accent)' }} 
+                    <Legend 
+                      verticalAlign="top" 
+                      align="right" 
+                      iconType="circle" 
+                      wrapperStyle={{ 
+                        paddingBottom: '25px', 
+                        paddingTop: '0px',
+                        fontSize: '9px', 
+                        fontWeight: '900',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        opacity: 0.8
+                      }} 
                     />
                     <Line 
                       yAxisId="left" 
                       type="monotone" 
-                      name="投入總成本" 
+                      name="當前市值" 
                       dataKey={(d) => {
                         const idx = chartData.indexOf(d);
-                        const win = 5;
+                        const win = 3;
+                        const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
+                        return subset.reduce((acc, curr) => acc + curr.value, 0) / subset.length;
+                      }}
+                      stroke="var(--accent)" strokeWidth={4} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: 'var(--accent)' }} 
+                    />
+                    <Line 
+                      yAxisId="left" 
+                      type="monotone" 
+                      name="投入成本" 
+                      dataKey={(d) => {
+                        const idx = chartData.indexOf(d);
+                        const win = 3;
                         const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
                         return subset.reduce((acc, curr) => acc + curr.cost, 0) / subset.length;
                       }}
-                      stroke="var(--danger)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={false} 
+                      stroke="var(--danger)" strokeWidth={2} strokeDasharray="5 5" opacity={0.6} dot={false} activeDot={false} 
                     />
                     <Line 
                       yAxisId="right" 
                       type="monotone" 
-                      name="帳面總損益 (含息)" 
+                      name="帳面盈虧" 
                       dataKey={(d) => {
                         const idx = chartData.indexOf(d);
-                        const win = 5;
+                        const win = 3;
                         const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
                         return subset.reduce((acc, curr) => acc + curr.profit, 0) / subset.length;
                       }}
-                      stroke="var(--success)" strokeWidth={2} dot={false} activeDot={false} 
+                      stroke="var(--success)" strokeWidth={3} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: 'var(--success)' }} 
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -349,37 +402,42 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <Layers className="text-[var(--accent)]" size={18} />
                 <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-dim)]">歷史週倉位矩陣</h3>
               </div>
-            <div className="elegant-card p-0 overflow-hidden border-[var(--border)] shadow-xl">
+            <div className="elegant-card p-0 overflow-hidden border-[var(--border)] shadow-2xl bg-opacity-50 backdrop-blur-sm">
               <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left min-w-max border-collapse">
                   <thead>
-                    <tr className="bg-[var(--bg-tertiary)] text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">
-                      <th className="px-4 py-4 border-b border-[var(--border)] sticky left-0 bg-[var(--bg-tertiary)] z-20">日期</th>
+                    <tr className="bg-[var(--bg-tertiary)] text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] border-b border-[var(--border)]">
+                      <th className="px-6 py-5 sticky left-0 bg-[var(--bg-tertiary)] z-20 shadow-[2px_0_10px_rgba(0,0,0,0.2)]">日期</th>
                       {/* Dynamic ticker columns */}
                       {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
-                        <th key={ticker} className="px-4 py-4 border-b border-[var(--border)] text-right min-w-[100px]">{ticker}</th>
+                        <th key={ticker} className="px-6 py-5 text-right min-w-[100px] font-mono">{ticker}</th>
                       ))}
-                      <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--danger)] min-w-[100px]">投入本金</th>
-                      <th className="px-4 py-4 border-b border-[var(--border)] text-right text-[var(--accent)] min-w-[100px]">總市值 (含息)</th>
-                      <th className="px-6 py-4 border-b border-[var(--border)] text-right min-w-[120px]">帳面損益 (含息)</th>
+                      <th className="px-6 py-5 text-right text-[var(--danger)] min-w-[120px] bg-[var(--danger)]/5">投入本金</th>
+                      <th className="px-6 py-5 text-right text-[var(--accent)] min-w-[120px] bg-[var(--accent)]/5">市值 (含息)</th>
+                      <th className="px-8 py-5 text-right min-w-[140px] bg-[var(--success)]/5">帳面損益</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border)]">
+                  <tbody className="divide-y divide-[var(--border)]/50">
                     {[...chartData].reverse().map((row, i) => (
-                      <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors group">
-                        <td className="px-4 py-4 font-mono text-[10px] sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-secondary)] z-10 border-r border-[var(--border)]/30">
+                      <tr key={i} className="hover:bg-[var(--accent)]/5 transition-colors group">
+                        <td className="px-6 py-5 font-mono text-[11px] font-bold sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[#1a1a1e] z-10 border-r border-[var(--border)]/30">
                           {row.name.replace(/-/g, '/')}
                         </td>
                         {/* Dynamic ticker values */}
                         {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
-                          <td key={ticker} className="px-4 py-4 font-mono text-[10px] text-right text-[var(--text-dim)]/70">
+                          <td key={ticker} className="px-6 py-5 font-mono text-[11px] text-right text-[var(--text-main)] opacity-70">
                             {row.breakdown?.[ticker] > 0 ? `$${row.breakdown[ticker].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
                           </td>
                         ))}
-                        <td className="px-4 py-4 font-mono text-[10px] text-right text-[var(--danger)]/80">${row.cost.toLocaleString()}</td>
-                        <td className="px-4 py-4 font-mono text-[10px] text-right text-[var(--accent)] font-bold">${row.value.toLocaleString()}</td>
-                        <td className={cn("px-6 py-4 font-mono text-[10px] font-black text-right", row.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                          {row.profit >= 0 ? '+' : ''}{row.profit.toLocaleString()}
+                        <td className="px-6 py-5 font-mono text-[11px] text-right text-[var(--danger)] opacity-80">${row.cost.toLocaleString()}</td>
+                        <td className="px-6 py-5 font-mono text-[11px] text-right text-[var(--accent)] font-black">${row.value.toLocaleString()}</td>
+                        <td className={cn("px-8 py-5 font-mono text-xs font-black text-right", row.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                          <div className="flex flex-col items-end">
+                            <span>{row.profit >= 0 ? '+' : ''}{row.profit.toLocaleString()}</span>
+                            <span className="text-[9px] opacity-60 font-sans tracking-normal font-normal">
+                              {((row.profit / (row.cost || 1)) * 100).toFixed(1)}%
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}
