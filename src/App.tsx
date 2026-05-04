@@ -128,6 +128,20 @@ export default function App() {
     }
     return initial;
   });
+  const [netWorthEntries, setNetWorthEntries] = useState<{date: string, cash: number, crypto: number}[]>(() => {
+    const saved = localStorage.getItem('z_money_net_worth');
+    if (saved) return JSON.parse(saved);
+    return [
+      { date: '2025-10-22', cash: 90521, crypto: -9000 },
+      { date: '2025-11-21', cash: 97534, crypto: -6600 },
+      { date: '2025-12-22', cash: 56958, crypto: -6648 },
+      { date: '2026-01-23', cash: -20246, crypto: -6652 },
+      { date: '2026-02-11', cash: 115796, crypto: -7637 },
+      { date: '2026-03-27', cash: 125666, crypto: -7711 },
+      { date: '2026-04-25', cash: 225281, crypto: -7569 }
+    ];
+  });
+
   const [tickerOrder, setTickerOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem('z_money_ticker_order');
     return saved ? JSON.parse(saved) : [];
@@ -159,7 +173,8 @@ export default function App() {
       z_money_market_data: marketData,
       z_money_theme: theme,
       z_money_ticker_order: tickerOrder,
-      z_money_pass: appPassword
+      z_money_pass: appPassword,
+      z_money_net_worth: netWorthEntries
     };
     Object.entries(data).forEach(([key, val]) => {
       if (val !== undefined && val !== null) {
@@ -168,7 +183,7 @@ export default function App() {
         localStorage.removeItem(key);
       }
     });
-  }, [transactions, weeklyPrices, marketData, theme, tickerOrder, appPassword]);
+  }, [transactions, weeklyPrices, marketData, theme, tickerOrder, appPassword, netWorthEntries]);
 
   useEffect(() => {
     if (theme === 'gold') {
@@ -1264,6 +1279,9 @@ export default function App() {
               onImport={handleHistoryCsvImport}
               onUpdateNotes={handleUpdateTransactionNotes}
               onToggleUncleared={handleToggleUncleared}
+              netWorthEntries={netWorthEntries}
+              setNetWorthEntries={setNetWorthEntries}
+              historicalChartData={chartData}
             />
           )}
 

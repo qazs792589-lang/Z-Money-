@@ -475,27 +475,26 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </div>
             </div>
 
-            <div className="elegant-card p-0 overflow-hidden relative border-[var(--border)] shadow-xl">
-              <div className="p-4 md:p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="p-4 md:p-6 pb-2 flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg-primary)]">
                       <Activity size={14} />
                     </div>
                     <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">
-                      績效對比分析
+                      績效對比
                     </h3>
                   </div>
-                  <p className="text-[10px] text-[var(--text-dim)] font-bold opacity-60 ml-9">
+                  <p className="hidden md:block text-[10px] text-[var(--text-dim)] font-bold opacity-60 ml-9">
                     Benchmark: TAIEX (台股大盤指數)
                   </p>
                 </div>
                 
-                <div className="flex bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border)] self-start md:self-center">
+                <div className="flex bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border)] shrink-0 scale-90 md:scale-100 origin-right">
                   <button 
                     onClick={() => setViewMode('ratio')}
                     className={cn(
-                      "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      "px-3 md:px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
                       viewMode === 'ratio' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
                     )}
                   >
@@ -504,7 +503,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   <button 
                     onClick={() => setViewMode('absolute')}
                     className={cn(
-                      "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      "px-3 md:px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
                       viewMode === 'absolute' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
                     )}
                   >
@@ -648,7 +647,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
-            </div>
 
             {/* Market Data Entry Section */}
             <div className="elegant-card bg-opacity-40 backdrop-blur-md">
@@ -659,12 +657,12 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">大盤基準數據管理</h4>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 items-end">
+              <div className="grid grid-cols-3 gap-2 md:gap-4 items-end">
                 <div className="space-y-2">
                   <label className="elegant-label">記錄日期</label>
                   <input 
                     type="date" 
-                    className="elegant-input text-[11px] h-10 md:h-11 px-2"
+                    className="elegant-input text-[10px] h-9 md:h-11 px-1 md:px-2"
                     value={mDate}
                     onChange={(e) => setMDate(e.target.value)}
                   />
@@ -673,7 +671,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   <label className="elegant-label">大盤點數</label>
                   <input 
                     type="number" 
-                    className="elegant-input text-[11px] h-10 md:h-11 px-2"
+                    className="elegant-input text-[10px] h-9 md:h-11 px-1 md:px-2"
                     placeholder="點數"
                     value={mPrice}
                     onChange={(e) => setMPrice(e.target.value)}
@@ -688,17 +686,17 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         .sort((a, b) => a.date.localeCompare(b.date));
                     });
                     setMPrice('');
-                    alert('大盤點數已成功記錄！');
+                    alert('大盤數據已成功記錄！');
                   }}
-                  className="col-span-2 md:col-span-1 bg-[var(--accent)] text-[var(--bg-primary)] h-10 md:h-11 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-[var(--accent-glow)]"
+                  className="bg-[var(--accent)] text-[var(--bg-primary)] h-9 md:h-11 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
                 >
-                  儲存數據
+                  儲存
                 </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-};
+               </div>
+             </div>
+           </div>
+         </motion.div>
+       </div>
+     </div>
+   );
+ };
