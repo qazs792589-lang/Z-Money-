@@ -74,17 +74,26 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
       const currentShares = appData.holdingsMap?.[ticker]?.currentShares || 0;
 
+      const lastOpDate = txs.reduce((latest: string, tx: any) => tx.date > latest ? tx.date : latest, '0000-00-00');
+
       groups[ticker] = {
         name: txs[0]?.name || ticker,
         transactions: displayRows,
         cumulativeProfit: totalProfit,
         cumulativeCost: totalRealizedCost,
         cumulativeRevenue: totalRevenue,
-        isHolding: currentShares > 0
+        isHolding: currentShares > 0,
+        lastOpDate
       };
     });
 
-    return Object.entries(groups).sort((a, b) => b[1].cumulativeProfit - a[1].cumulativeProfit);
+    return Object.entries(groups).sort((a, b) => {
+      // 1. Holding first
+      if (a[1].isHolding && !b[1].isHolding) return -1;
+      if (!a[1].isHolding && b[1].isHolding) return 1;
+      // 2. Sort by lastOpDate descending
+      return b[1].lastOpDate.localeCompare(a[1].lastOpDate);
+    });
   }, [appData]);
 
   const netWorthChartData = useMemo(() => {
