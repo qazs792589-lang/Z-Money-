@@ -1,4 +1,4 @@
-import { History, FileUp, Edit2, Check, ChevronRight, ChevronDown, Clock, PieChart, LineChart as LucideLineChart, Activity, Plus } from 'lucide-react';
+import { History, FileUp, Edit2, Check, ChevronRight, ChevronDown, Clock, PieChart, LineChart as LucideLineChart, Activity, Plus, Trash2 } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { cn } from '../lib/utils';
 import { RealizedProfit, Transaction } from '../types';
@@ -113,45 +113,60 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-black flex items-center gap-3">
-          {activeTab === 'details' ? <History className="text-[var(--accent)]" /> : <Activity className="text-[var(--accent)]" />}
-          {activeTab === 'details' ? '已實現損益' : '個人總資產概況'}
-        </h2>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-black flex items-center gap-3">
+            {activeTab === 'details' ? <History className="text-[var(--accent)]" /> : <Activity className="text-[var(--accent)]" />}
+            {activeTab === 'details' ? '已實現損益' : '個人總資產'}
+          </h2>
+          <div className="flex md:hidden">
+            <input type="file" ref={fileInputRef} onChange={onImport} accept=".csv" className="hidden" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-dim)] active:scale-90 transition-all shadow-sm"
+              title="匯入歷史 CSV"
+            >
+              <FileUp size={18} />
+            </button>
+          </div>
+        </div>
         
-        <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border)] self-start md:self-center">
-          <button 
-            onClick={() => setActiveTab('details')}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              activeTab === 'details' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)]"
-            )}
-          >
-            <PieChart size={14} /> 損益細節
-          </button>
-          <button 
-            onClick={() => setActiveTab('networth')}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              activeTab === 'networth' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)]"
-            )}
-          >
-            <LucideLineChart size={14} /> 總資產
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border)]">
+            <button 
+              onClick={() => setActiveTab('details')}
+              className={cn(
+                "px-3 md:px-4 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                activeTab === 'details' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)]"
+              )}
+            >
+              <PieChart size={14} /> 損益細節
+            </button>
+            <button 
+              onClick={() => setActiveTab('networth')}
+              className={cn(
+                "px-3 md:px-4 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                activeTab === 'networth' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)]"
+              )}
+            >
+              <LucideLineChart size={14} /> 總資產
+            </button>
+          </div>
+
+          <div className="hidden md:flex">
+            <input type="file" ref={fileInputRef} onChange={onImport} accept=".csv" className="hidden" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[10px] font-black text-[var(--text-dim)] hover:text-[var(--accent)] transition-all uppercase tracking-widest shadow-sm"
+            >
+              <FileUp size={14} /> 匯入歷史 CSV
+            </button>
+          </div>
         </div>
       </div>
 
       {activeTab === 'details' ? (
         <div className="space-y-6">
-          <div className="flex justify-end">
-            <input type="file" ref={fileInputRef} onChange={onImport} accept=".csv" className="hidden" />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-[10px] font-black text-[var(--text-dim)] hover:text-[var(--accent)] transition-all uppercase tracking-widest"
-            >
-              <FileUp size={14} /> 匯入歷史 CSV
-            </button>
-          </div>
 
           {tickerHistory.map(([ticker, group]: [string, any]) => {
             return (
@@ -276,18 +291,18 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
             </div>
             
             <div className="p-4 bg-[var(--bg-primary)] border-b border-[var(--border)]">
-              <div className="grid grid-cols-4 gap-2 items-end">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 items-end">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">日期</label>
-                  <input type="date" className="elegant-input text-[11px] h-9 px-2" value={nDate} onChange={e => setNDate(e.target.value)} />
+                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">記錄日期</label>
+                  <input type="date" className="elegant-input text-xs h-10 px-2 w-full" value={nDate} onChange={e => setNDate(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">現金帳戶</label>
-                  <input type="number" className="elegant-input text-[11px] h-9 px-2" placeholder="金額" value={nCash} onChange={e => setNCash(e.target.value)} />
+                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">現金帳戶 (TWD)</label>
+                  <input type="number" className="elegant-input text-xs h-10 px-3 w-full" placeholder="0" value={nCash} onChange={e => setNCash(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">加密貨幣</label>
-                  <input type="number" className="elegant-input text-[11px] h-9 px-2" placeholder="金額" value={nCrypto} onChange={e => setNCrypto(e.target.value)} />
+                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">加密貨幣 (USD)</label>
+                  <input type="number" className="elegant-input text-xs h-10 px-3 w-full" placeholder="0" value={nCrypto} onChange={e => setNCrypto(e.target.value)} />
                 </div>
                 <button 
                   onClick={() => {
@@ -299,9 +314,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                     });
                     setNCash(''); setNCrypto('');
                   }}
-                  className="bg-[var(--accent)] text-[var(--bg-primary)] h-9 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all"
+                  className="bg-[var(--accent)] text-[var(--bg-primary)] h-10 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[var(--accent-glow)]"
                 >
-                  <Plus size={14} /> 紀錄
+                  <Plus size={16} /> 記錄資產
                 </button>
               </div>
             </div>
@@ -319,8 +334,35 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {[...netWorthChartData].reverse().map((entry, idx) => (
-                    <tr key={idx} className="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-                      <td className="px-6 py-4 font-mono text-xs">{entry.date}</td>
+                    <tr key={idx} className="hover:bg-[var(--bg-secondary)]/50 transition-colors group">
+                      <td className="px-6 py-4 font-mono text-xs">
+                        <div className="flex items-center gap-2">
+                          {entry.date}
+                          <button 
+                            onClick={() => {
+                              setNDate(entry.date);
+                              setNCash(entry.cash.toString());
+                              setNCrypto(entry.crypto.toString());
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--accent)]"
+                            title="編輯此筆紀錄"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (window.confirm('確定要刪除這筆資產紀錄嗎？')) {
+                                setNetWorthEntries(prev => prev.filter(p => p.date !== entry.date));
+                              }
+                            }}
+                            className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--danger)]"
+                            title="刪除此筆紀錄"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 font-mono text-xs text-[var(--text-main)]">
                         ${(entry.cash || 0).toLocaleString()}
                       </td>
