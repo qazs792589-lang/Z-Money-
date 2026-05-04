@@ -48,7 +48,7 @@ const DraggablePill: React.FC<DraggablePillProps> = ({
     >
       {isEditing && (
         <div
-          className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors"
+          className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors touch-none"
           onPointerDown={(e) => dragControls.start(e)}
         >
           <GripVertical size={14} />
