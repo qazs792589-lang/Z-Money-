@@ -151,6 +151,14 @@
   touch-action: pan-x;
 }
 
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 .no-select {
   -webkit-user-select: none;
   user-select: none;

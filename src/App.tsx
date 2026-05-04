@@ -1013,7 +1013,7 @@ export default function App() {
                   </div>
 
                   {/* Modern Ticker Navigation */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none smooth-scroll-x">
+                  <div className="overflow-x-auto scrollbar-none touch-pan-x">
                     <TickerPillList
                       tickerOrder={tickerOrder}
                       setTickerOrder={setTickerOrder}

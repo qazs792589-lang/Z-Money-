@@ -335,32 +335,34 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                 <tbody className="divide-y divide-[var(--border)]">
                   {[...netWorthChartData].reverse().map((entry, idx) => (
                     <tr key={idx} className="hover:bg-[var(--bg-secondary)]/50 transition-colors group">
-                      <td className="px-6 py-4 font-mono text-xs">
-                        <div className="flex items-center gap-2">
-                          {entry.date}
-                          <button 
-                            onClick={() => {
-                              setNDate(entry.date);
-                              setNCash(entry.cash.toString());
-                              setNCrypto(entry.crypto.toString());
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--accent)]"
-                            title="編輯此筆紀錄"
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (window.confirm('確定要刪除這筆資產紀錄嗎？')) {
-                                setNetWorthEntries(prev => prev.filter(p => p.date !== entry.date));
-                              }
-                            }}
-                            className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--danger)]"
-                            title="刪除此筆紀錄"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                      <td className="px-4 py-4 font-mono text-xs">
+                        <div className="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
+                          <span className="shrink-0">{entry.date}</span>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => {
+                                setNDate(entry.date);
+                                setNCash(entry.cash.toString());
+                                setNCrypto(entry.crypto.toString());
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--accent)]"
+                              title="編輯此筆紀錄"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (window.confirm('確定要刪除這筆資產紀錄嗎？')) {
+                                  setNetWorthEntries(prev => prev.filter(p => p.date !== entry.date));
+                                }
+                              }}
+                              className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--danger)]"
+                              title="刪除此筆紀錄"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 font-mono text-xs text-[var(--text-main)]">

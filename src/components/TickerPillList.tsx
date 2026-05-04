@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Reorder, useDragControls } from 'motion/react';
-import { Database, Activity, X } from 'lucide-react';
+import { Reorder, useDragControls } from 'framer-motion';
+import { Database, Activity, X, GripVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface DraggablePillProps {
@@ -18,35 +18,48 @@ const DraggablePill: React.FC<DraggablePillProps> = ({
   ticker, name, isZero, isSelected, onSelect, onRename, onDelete, isEditing
 }) => {
   const dragControls = useDragControls();
+  
   return (
     <Reorder.Item
       key={ticker}
       value={ticker}
       dragListener={false}
       dragControls={dragControls}
+      layout
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      whileDrag={{ 
+        scale: 1.1, 
+        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        zIndex: 50 
+      }}
+      transition={{ type: "spring", stiffness: 500, damping: 30, mass: 1 }}
       className={cn(
-        "px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap border shadow-sm flex items-center gap-2 transition-all hardware-accel no-select cursor-pointer",
+        "px-4 py-2 rounded-2xl font-black text-xs whitespace-nowrap border shadow-sm flex items-center gap-2 transition-all hardware-accel no-select cursor-pointer relative",
         isSelected 
-          ? "bg-[var(--text-main)] text-[var(--bg-primary)] border-[var(--text-main)] shadow-lg" 
-          : (isZero ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-60 border-dashed" : "bg-[var(--bg-secondary)] text-[var(--text-main)] border-[var(--border)]")
+          ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] shadow-[0_0_15px_var(--accent-glow)]" 
+          : (isZero 
+              ? "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] opacity-40 border-dashed" 
+              : "bg-[var(--bg-secondary)] text-[var(--text-main)] border-[var(--border)] hover:border-[var(--accent)]")
       )}
-      onClick={() => onSelect(ticker)}
+      onClick={() => !isEditing && onSelect(ticker)}
       onDoubleClick={() => onRename(ticker)}
     >
       {isEditing && (
-        <span
-          className="opacity-60 text-[10px] cursor-grab active:cursor-grabbing p-1 -ml-2"
+        <div
+          className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors"
           onPointerDown={(e) => dragControls.start(e)}
         >
-          ⠿
-        </span>
+          <GripVertical size={14} />
+        </div>
       )}
-      {name}
-      {isZero && <span className="opacity-40 text-[9px] font-normal">(已清倉)</span>}
+      <span className="tracking-tight">{name}</span>
+      {isZero && <span className="opacity-60 text-[9px] font-bold">(已清倉)</span>}
       {isEditing && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(ticker); }}
-          className="ml-1 p-0.5 hover:bg-black/20 rounded-full transition-colors"
+          className="ml-1 p-1 bg-black/20 hover:bg-[var(--danger)] hover:text-white rounded-full transition-all"
         >
           <X size={10} />
         </button>
@@ -85,24 +98,27 @@ export const TickerPillList: React.FC<TickerPillListProps> = ({
   }, [allTickers, holdingsMap, tickerOrder]);
 
   return (
-    <div className="flex items-center gap-2 w-full">
-      <div className="flex-1 overflow-x-auto no-scrollbar py-2 -mx-2 px-2 hardware-accel">
-        <Reorder.Group axis="x" values={sortedTickers} onReorder={setTickerOrder} className="flex gap-2 min-w-max">
-          {sortedTickers.map(ticker => (
-            <DraggablePill
-              key={ticker}
-              ticker={ticker}
-              name={stockMap[ticker] || ticker}
-              isZero={(holdingsMap[ticker]?.currentShares || 0) <= 0}
-              isSelected={selectedTicker === ticker}
-              onSelect={setSelectedTicker}
-              onRename={onRenameTicker}
-              onDelete={onDeleteTicker}
-              isEditing={isEditing}
-            />
-          ))}
-        </Reorder.Group>
-      </div>
+    <div className="w-full relative pb-6 pt-2">
+      <Reorder.Group 
+        axis="x" 
+        values={sortedTickers} 
+        onReorder={setTickerOrder} 
+        className="flex gap-2 min-w-max px-1"
+      >
+        {sortedTickers.map(ticker => (
+          <DraggablePill
+            key={ticker}
+            ticker={ticker}
+            name={stockMap[ticker] || ticker}
+            isZero={(holdingsMap[ticker]?.currentShares || 0) <= 0}
+            isSelected={selectedTicker === ticker}
+            onSelect={setSelectedTicker}
+            onRename={onRenameTicker}
+            onDelete={onDeleteTicker}
+            isEditing={isEditing}
+          />
+        ))}
+      </Reorder.Group>
     </div>
   );
 };
