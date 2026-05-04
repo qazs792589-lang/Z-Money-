@@ -38,6 +38,8 @@ interface PortfolioViewProps {
   setActiveView: (view: 'A' | 'B' | 'C') => void;
   tickerOrder: string[];
   setWeeklyPrices: React.Dispatch<React.SetStateAction<any[]>>;
+  tickerMetadata: Record<string, { assetClass?: string }>;
+  onUpdateAssetClass: (ticker: string, assetClass: string) => void;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -49,7 +51,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   setSelectedTicker,
   setActiveView,
   tickerOrder,
-  setWeeklyPrices
+  setWeeklyPrices,
+  tickerMetadata,
+  onUpdateAssetClass
 }) => {
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<'ratio' | 'absolute'>('ratio');
@@ -71,7 +75,35 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     }).sort((a, b) => b.value - a.value);
   }, [appData.activeHoldings, marketData.prices, weeklyPrices]);
 
-  const COLORS = ['#00f2ff', '#7000ff', '#ff00c8', '#ffcc00', '#00ff88', '#ff4400', '#44ff00'];
+  const categoryData = useMemo(() => {
+    const holdings = appData.activeHoldings || [];
+    const categories: Record<string, number> = {};
+    
+    holdings.forEach(h => {
+      const latestWeekly = weeklyPrices
+        .filter(wp => wp.ticker === h.ticker)
+        .sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
+      const curPrice = marketData.prices[h.ticker] || latestWeekly || h.avgCost;
+      const value = curPrice * h.currentShares;
+      const cat = tickerMetadata[h.ticker]?.assetClass || '未分類';
+      categories[cat] = (categories[cat] || 0) + value;
+    });
+
+    return Object.entries(categories)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [appData.activeHoldings, marketData.prices, weeklyPrices, tickerMetadata]);
+
+  const COLORS = ['#00f2ff', '#7000ff', '#ff00c8', '#ffcc00', '#00ff88', '#ff4400', '#44ff00', '#888888'];
+  const CAT_COLORS: Record<string, string> = {
+    '台股': '#00f2ff',
+    '美股': '#7000ff',
+    'ETF': '#ff00c8',
+    '債券': '#ffcc00',
+    '現金': '#00ff88',
+    '加密貨幣': '#ff4400',
+    '未分類': '#444444'
+  };
 
   return (
     <div className="flex flex-col gap-8 pb-20 overflow-hidden">
@@ -426,7 +458,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <tbody className="divide-y divide-[var(--border)]/50">
                       {[...chartData].reverse().map((row, i) => (
                         <tr key={i} className="hover:bg-[var(--accent)]/5 transition-colors group">
-                          <td className="px-6 py-5 font-mono text-[11px] font-bold sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[#1a1a1e] z-10 border-r border-[var(--border)]/30">
+                          <td className="px-6 py-5 font-mono text-[11px] font-bold sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10 border-r border-[var(--border)]/30">
                             {row.name.replace(/-/g, '/')}
                           </td>
                           {/* Dynamic ticker values */}

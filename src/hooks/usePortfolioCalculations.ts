@@ -19,9 +19,9 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
       const isRealized = isTxRealized(tx);
 
       if (!holdings[tx.ticker]) {
-        holdings[tx.ticker] = { 
-          ticker: tx.ticker, name: tx.name, 
-          currentShares: 0, avgCost: 0, totalInvested: 0, realizedPL: 0, totalBuyFees: 0, 
+        holdings[tx.ticker] = {
+          ticker: tx.ticker, name: tx.name,
+          currentShares: 0, avgCost: 0, totalInvested: 0, realizedPL: 0, totalBuyFees: 0,
           unrealizedDividends: 0,
           _mathShares: 0, _mathCost: 0, _mathFees: 0 // Shadow math tracking
         } as any;
@@ -56,7 +56,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
 
         if (isRealized) {
           h.realizedPL += profit;
-          
+
           let daysHeld = 0;
           if (h.firstBuyDate) {
             const start = new Date(h.firstBuyDate).getTime();
@@ -120,7 +120,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
       const latestWeekly = weeklyPrices
         .filter(wp => wp.ticker === h.ticker)
         .sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
-      
+
       const price = marketData.prices[h.ticker] || latestWeekly || h.avgCost;
       totalMarketValue += price * h.currentShares;
       totalInvested += h.totalInvested;
@@ -130,7 +130,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
     const unrealizedPL = totalMarketValue - totalInvested;
     const totalPL = unrealizedPL + totalRealizedPL;
     const roi = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
-    
+
     return { totalMarketValue, totalInvested, unrealizedPL, totalRealizedPL, totalPL, roi };
   }, [appData.activeHoldings, appData.realizedList, marketData.prices, weeklyPrices]);
 

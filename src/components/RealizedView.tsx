@@ -1,23 +1,27 @@
-import { History, FileUp, Edit2, Check, ChevronRight, ChevronDown, Clock, PieChart, LineChart as LucideLineChart, Activity, Plus, Trash2 } from 'lucide-react';
+import { History, FileUp, ChevronDown, PieChart as PieChartIcon, Activity, TrendingUp, Edit2, Trash2, Plus, Layers, LineChart as LucideLineChart, Check, ChevronRight, Clock } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { cn } from '../lib/utils';
-import { RealizedProfit, Transaction } from '../types';
+import { RealizedProfit, Transaction, Holding } from '../types';
 import { isTxRealized } from '../lib/txUtils';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 
 interface RealizedViewProps {
   appData: any;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUpdateNotes: (txId: string, notes: string) => void;
   onToggleRealized: (txId: string) => void;
-  netWorthEntries: {date: string, cash: number, crypto: number}[];
-  setNetWorthEntries: React.Dispatch<React.SetStateAction<{date: string, cash: number, crypto: number}[]>>;
+  netWorthEntries: {date: string, assets: Record<string, number>}[];
+  setNetWorthEntries: React.Dispatch<React.SetStateAction<{date: string, assets: Record<string, number>}[]>>;
   historicalChartData: any[];
+  tickerMetadata: Record<string, { assetClass?: string }>;
+  holdings: Holding[];
+  marketPrices: Record<string, number>;
 }
 
 export const RealizedView: React.FC<RealizedViewProps> = ({ 
   appData, onImport, onUpdateNotes, onToggleRealized, 
-  netWorthEntries, setNetWorthEntries, historicalChartData = []
+  netWorthEntries, setNetWorthEntries, historicalChartData = [],
+  tickerMetadata = {}, holdings = [], marketPrices = {}
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -27,8 +31,25 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
   // Asset Entry State
   const [nDate, setNDate] = useState(new Date().toISOString().split('T')[0]);
-  const [nCash, setNCash] = useState('');
-  const [nCrypto, setNCrypto] = useState('');
+  const [newAssetValues, setNewAssetValues] = useState<Record<string, string>>({ '現金': '', '加密貨幣': '' });
+
+  // Get all unique asset keys from history
+  const assetKeys = useMemo(() => {
+    const keys = new Set(['現金', '加密貨幣']);
+    netWorthEntries.forEach(entry => {
+      if (entry.assets) {
+        Object.keys(entry.assets).forEach(k => keys.add(k));
+      }
+    });
+    return Array.from(keys);
+  }, [netWorthEntries]);
+
+  const handleAddCustomAssetType = () => {
+    const name = window.prompt('請輸入新資產類別名稱 (例如：房地產、保險)：');
+    if (name && !assetKeys.includes(name)) {
+      setNewAssetValues(prev => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const startEditing = (txId: string, currentNotes: string) => {
     setEditingId(txId);
@@ -92,33 +113,77 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
     });
 
     return Object.entries(groups).sort((a, b) => {
-      // 1. Holding first
       if (a[1].isHolding && !b[1].isHolding) return -1;
       if (!a[1].isHolding && b[1].isHolding) return 1;
-      // 2. Sort by lastOpDate descending
       return b[1].lastOpDate.localeCompare(a[1].lastOpDate);
     });
-  }, [appData]);
+  }, [appData?.stockGroups, appData?.realizedList, appData?.holdingsMap]);
+
+  const categoryData = useMemo(() => {
+    const categories: Record<string, number> = {};
+    
+    // 1. Add Stock Holdings
+    const holdings = appData?.holdingsMap ? Object.values(appData.holdingsMap) : [];
+    holdings.forEach((h: any) => {
+      if (!h.currentShares || h.currentShares <= 0) return;
+      const curPrice = marketPrices[h.ticker] || h.avgCost;
+      const value = curPrice * h.currentShares;
+      const cat = tickerMetadata[h.ticker]?.assetClass || '股票';
+      categories[cat] = (categories[cat] || 0) + value;
+    });
+
+    // 2. Add Custom Assets from latest Net Worth entry
+    if (netWorthEntries && netWorthEntries.length > 0) {
+      const sorted = [...netWorthEntries].sort((a, b) => b.date.localeCompare(a.date));
+      const latest = sorted[0];
+      if (latest.assets) {
+        Object.entries(latest.assets).forEach(([name, val]) => {
+          if (val > 0) categories[name] = (categories[name] || 0) + val;
+        });
+      }
+    }
+
+    return Object.entries(categories)
+      .map(([name, value]) => ({ name, value }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [appData?.holdingsMap, marketPrices, tickerMetadata, netWorthEntries]);
 
   const netWorthChartData = useMemo(() => {
     if (!netWorthEntries) return [];
     return netWorthEntries.map(entry => {
       const history = historicalChartData || [];
-      // Find the closest stock value from historicalChartData
       const stockEntry = history.filter(d => d.name <= entry.date).reverse()[0] || history[0];
       const stockValue = stockEntry?.value || 0;
-      const cash = parseFloat(entry.cash as any) || 0;
-      const crypto = parseFloat(entry.crypto as any) || 0;
-      const total = cash + crypto + stockValue;
+      
+      let otherAssetsTotal = 0;
+      if (entry.assets) {
+        Object.values(entry.assets).forEach(v => otherAssetsTotal += (v || 0));
+      } else {
+        // Fallback for old data format
+        otherAssetsTotal = ((entry as any).cash || 0) + ((entry as any).crypto || 0);
+      }
+      
+      const total = otherAssetsTotal + stockValue;
       return {
         ...entry,
-        cash,
-        crypto,
         stockValue,
         total
       };
     }).sort((a, b) => a.date.localeCompare(b.date));
   }, [netWorthEntries, historicalChartData]);
+
+  const COLORS = ['#7000ff', '#ff00c8', '#ffcc00', '#00ff88', '#ff4400', '#44ff00', '#888888', '#00f2ff', '#0066ff', '#33ffcc'];
+  const CAT_COLORS: Record<string, string> = {
+    '股票': '#00f2ff',
+    '台股': '#00f2ff',
+    '美股': '#7000ff',
+    'ETF': '#ff00c8',
+    '債券': '#ffcc00',
+    '現金': '#00ff88',
+    '加密貨幣': '#ff4400',
+    '未分類': '#444444'
+  };
 
   const currentTotalAssets = netWorthChartData[netWorthChartData.length - 1]?.total || 0;
   const prevTotalAssets = netWorthChartData[netWorthChartData.length - 2]?.total || currentTotalAssets;
@@ -254,7 +319,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                           <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]")}>
                             <td className="px-6 py-3 font-mono text-xs">{tx.date}</td>
                             <td className="px-6 py-3 font-mono text-xs">{(tx.quantity || 0).toLocaleString()}</td>
-                            <td className="px-6 py-3 font-mono text-xs">${(tx.totalAmount || 0).toLocaleString()}</td>
+                            <td className={cn("px-6 py-3 font-mono text-xs font-bold", (tx.totalAmount || 0) <= 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                              {(tx.totalAmount || 0) > 0 ? '+' : ''}{(tx.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </td>
                             <td className={cn("px-6 py-3 font-mono text-xs font-bold", tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                               {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString()}` : '-'}
                             </td>
@@ -319,6 +386,54 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
             </div>
           </div>
 
+          {/* Asset Category Allocation Chart */}
+          {categoryData.length > 0 && (
+            <div className="elegant-card p-5 relative border-[var(--border)] shadow-xl bg-opacity-40">
+              <h4 className="text-[10px] font-black opacity-60 flex items-center gap-2 mb-6 uppercase tracking-[0.2em] text-[var(--accent)]">
+                <PieChartIcon size={12} /> 資產類別權重
+              </h4>
+              <div className="flex items-center gap-6">
+                <div className="w-1/2 h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={65}
+                        paddingAngle={4}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {categoryData.map((entry, index) => {
+                          const color = CAT_COLORS[entry.name] || COLORS[index % COLORS.length];
+                          return <Cell key={`cell-${index}`} fill={color} />;
+                        })}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex-1 space-y-2">
+                  {categoryData.map((item, index) => {
+                    const color = CAT_COLORS[item.name] || COLORS[index % COLORS.length];
+                    return (
+                      <div key={item.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                          <span className="text-[10px] font-bold text-[var(--text-dim)]">{item.name}</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-black text-[var(--text-main)]">
+                          {((item.value / (categoryData.reduce((acc, curr) => acc + curr.value, 0) || 1)) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Chart Section */}
           <div className="elegant-card p-6">
             <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)] mb-6 flex items-center gap-2">
@@ -346,101 +461,148 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
             </div>
           </div>
 
-          {/* Data Management Table */}
-          <div className="elegant-card p-0 overflow-hidden border-[var(--border)] shadow-xl">
-            <div className="p-6 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-              <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)] flex items-center gap-2">
-                <Edit2 size={14} className="text-[var(--accent)]" /> 資產分配歷史紀錄
-              </h4>
+          {/* Asset Allocation Form */}
+          <div className="elegant-card p-6 bg-opacity-40 backdrop-blur-md border-[var(--border)] shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+              <Layers size={120} />
             </div>
             
-            <div className="p-4 bg-[var(--bg-primary)] border-b border-[var(--border)]">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 items-end">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">記錄日期</label>
-                  <input type="date" className="elegant-input text-xs h-10 px-2 w-full" value={nDate} onChange={e => setNDate(e.target.value)} />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
+                  <Edit2 size={18} />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">現金帳戶 (TWD)</label>
-                  <input type="number" className="elegant-input text-xs h-10 px-3 w-full" placeholder="0" value={nCash} onChange={e => setNCash(e.target.value)} />
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">記錄資產分配</h4>
+                  <p className="text-[10px] text-[var(--text-dim)] font-bold mt-0.5">手動登記非股票資產以計算總淨值</p>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)]">加密貨幣 (USD)</label>
-                  <input type="number" className="elegant-input text-xs h-10 px-3 w-full" placeholder="0" value={nCrypto} onChange={e => setNCrypto(e.target.value)} />
-                </div>
-                <button 
-                  onClick={() => {
-                    if (!nCash) return;
-                    setNetWorthEntries(prev => {
-                      const others = (prev || []).filter(p => p.date !== nDate);
-                      return [...others, { date: nDate, cash: parseFloat(nCash), crypto: parseFloat(nCrypto) || 0 }]
-                        .sort((a, b) => a.date.localeCompare(b.date));
-                    });
-                    setNCash(''); setNCrypto('');
-                  }}
-                  className="bg-[var(--accent)] text-[var(--bg-primary)] h-10 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[var(--accent-glow)]"
-                >
-                  <Plus size={16} /> 記錄資產
-                </button>
               </div>
+              <button 
+                onClick={handleAddCustomAssetType}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--accent)] text-[10px] font-black uppercase tracking-widest hover:bg-[var(--accent)] hover:text-[var(--bg-primary)] transition-all group"
+              >
+                <Plus size={14} className="group-hover:scale-110 transition-transform" /> 
+                新增資產類別
+              </button>
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-5 items-end">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--text-dim)] ml-1">記錄日期</label>
+                <input 
+                  type="date" 
+                  className="elegant-input text-xs h-12 px-4 bg-[var(--bg-secondary)]"
+                  value={nDate}
+                  onChange={(e) => setNDate(e.target.value)}
+                />
+              </div>
+              
+              {assetKeys.map(key => (
+                <div key={key} className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--text-dim)] ml-1">{key}</label>
+                  <input 
+                    type="number" 
+                    className="elegant-input text-xs h-12 px-4 bg-[var(--bg-secondary)]"
+                    placeholder="0"
+                    value={newAssetValues[key] || ''}
+                    onChange={(e) => setNewAssetValues(prev => ({ ...prev, [key]: e.target.value }))}
+                  />
+                </div>
+              ))}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[600px]">
+              <button 
+                onClick={() => {
+                  const assets: Record<string, number> = {};
+                  Object.entries(newAssetValues).forEach(([k, v]) => {
+                    assets[k] = parseFloat(v) || 0;
+                  });
+                  
+                  setNetWorthEntries(prev => {
+                    const others = prev.filter(p => p.date !== nDate);
+                    return [...others, { date: nDate, assets }]
+                      .sort((a, b) => b.date.localeCompare(a.date));
+                  });
+                  
+                  const cleared: Record<string, string> = {};
+                  assetKeys.forEach(k => cleared[k] = '');
+                  setNewAssetValues(cleared);
+                  alert('資產分配已成功記錄！');
+                }}
+                className="bg-[var(--accent)] text-[var(--bg-primary)] h-12 rounded-xl text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[var(--accent)]/20"
+              >
+                儲存當前分配
+              </button>
+            </div>
+          </div>
+
+          {/* Historical Data Table */}
+          <div className="elegant-card p-0 overflow-hidden border-[var(--border)] shadow-xl">
+            <div className="p-6 border-b border-[var(--border)] bg-[var(--bg-secondary)]/50 flex items-center justify-between">
+              <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--text-main)] flex items-center gap-2">
+                <History size={14} className="text-[var(--accent)]" /> 歷史紀錄清單
+              </h4>
+              <span className="text-[9px] font-bold text-[var(--text-dim)] bg-[var(--bg-tertiary)] px-2 py-1 rounded text-uppercase">
+                共 {netWorthEntries.length} 筆資料
+              </span>
+            </div>
+            
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left min-w-[900px]">
                 <thead>
-                  <tr className="text-[9px] text-[var(--text-dim)] font-bold uppercase tracking-widest bg-[var(--bg-tertiary)]/30">
-                    <th className="px-6 py-4">日期</th>
-                    <th className="px-6 py-4">帳戶/現金</th>
-                    <th className="px-6 py-4">台股市值</th>
-                    <th className="px-6 py-4">加密貨幣</th>
-                    <th className="px-6 py-4 text-right">總計 (Net Worth)</th>
+                  <tr className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-[0.2em] bg-[var(--bg-tertiary)]/20 border-b border-[var(--border)]">
+                    <th className="px-6 py-5">日期</th>
+                    {assetKeys.map(key => (
+                      <th key={key} className="px-6 py-5">{key}</th>
+                    ))}
+                    <th className="px-6 py-5">股票市值</th>
+                    <th className="px-6 py-5 text-right">總淨值 (Net Worth)</th>
+                    <th className="px-6 py-5 w-20"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {[...netWorthChartData].reverse().map((entry, idx) => (
-                    <tr key={idx} className="hover:bg-[var(--bg-secondary)]/50 transition-colors group">
-                      <td className="px-4 py-4 font-mono text-xs">
-                        <div className="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
-                          <span className="shrink-0">{entry.date}</span>
-                          <div className="flex items-center gap-1">
-                            <button 
-                              onClick={() => {
-                                setNDate(entry.date);
-                                setNCash(entry.cash.toString());
-                                setNCrypto(entry.crypto.toString());
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                              }}
-                              className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--accent)]"
-                              title="編輯此筆紀錄"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                if (window.confirm('確定要刪除這筆資產紀錄嗎？')) {
-                                  setNetWorthEntries(prev => prev.filter(p => p.date !== entry.date));
-                                }
-                              }}
-                              className="p-1.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-dim)] md:opacity-0 md:group-hover:opacity-100 transition-all hover:text-[var(--danger)]"
-                              title="刪除此筆紀錄"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </div>
+                    <tr key={idx} className="hover:bg-[var(--bg-secondary)]/30 transition-colors group">
+                      <td className="px-6 py-5 font-mono text-xs font-black text-[var(--text-main)]">{entry.date}</td>
+                      {assetKeys.map(key => {
+                        const val = entry.assets?.[key] || (entry as any)[key === '現金' ? 'cash' : (key === '加密貨幣' ? 'crypto' : '')] || 0;
+                        return (
+                          <td key={key} className={cn("px-6 py-5 font-mono text-xs", (val || 0) < 0 ? "text-[var(--success)]" : "text-[var(--text-dim)]")}>
+                            ${(val || 0).toLocaleString()}
+                          </td>
+                        );
+                      })}
+                      <td className="px-6 py-5 font-mono text-xs text-[var(--accent)] font-bold">
+                        ${(entry.stockValue || 0).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs text-[var(--text-main)]">
-                        ${(entry.cash || 0).toLocaleString()}
+                      <td className="px-6 py-5 text-right">
+                        <span className="font-mono font-black text-sm text-[var(--text-main)] bg-[var(--accent)]/5 px-2 py-1 rounded">
+                          ${(entry.total || 0).toLocaleString()}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs text-[var(--accent)]">${(entry.stockValue || 0).toLocaleString()}</td>
-                      <td className={cn("px-6 py-4 font-mono text-xs", (entry.crypto || 0) >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                        ${(entry.crypto || 0).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-xs font-black">
-                        ${(entry.total || 0).toLocaleString()}
+                      <td className="px-6 py-5 text-right">
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('確定要刪除這筆資產紀錄嗎？')) {
+                              setNetWorthEntries(prev => prev.filter(p => p.date !== entry.date));
+                            }
+                          }}
+                          className="p-2 text-[var(--text-dim)] hover:text-[var(--danger)] transition-all md:opacity-0 md:group-hover:opacity-100"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
+                  {netWorthEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={assetKeys.length + 4} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center opacity-20">
+                          <History size={40} className="mb-4" />
+                          <p className="text-xs font-black uppercase tracking-widest">目前尚無紀錄</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -128,23 +128,32 @@ export default function App() {
     }
     return initial;
   });
-  const [netWorthEntries, setNetWorthEntries] = useState<{date: string, cash: number, crypto: number}[]>(() => {
+  const [netWorthEntries, setNetWorthEntries] = useState<{date: string, assets: Record<string, number>}[]>(() => {
     const saved = localStorage.getItem('z_money_net_worth');
-    if (saved) return JSON.parse(saved);
-    return [
-      { date: '2025-10-22', cash: 90521, crypto: -9000 },
-      { date: '2025-11-21', cash: 97534, crypto: -6600 },
-      { date: '2025-12-22', cash: 56958, crypto: -6648 },
-      { date: '2026-01-23', cash: -20246, crypto: -6652 },
-      { date: '2026-02-11', cash: 115796, crypto: -7637 },
-      { date: '2026-03-27', cash: 125666, crypto: -7711 },
-      { date: '2026-04-25', cash: 225281, crypto: -7569 }
-    ];
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return parsed.map((entry: any) => {
+      if (entry.assets) return entry;
+      // Migration from old flat format
+      const { date, cash, crypto, ...rest } = entry;
+      return {
+        date,
+        assets: {
+          '現金': cash || 0,
+          '加密貨幣': crypto || 0,
+          ...rest
+        }
+      };
+    });
   });
 
   const [tickerOrder, setTickerOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem('z_money_ticker_order');
     return saved ? JSON.parse(saved) : [];
+  });
+  const [tickerMetadata, setTickerMetadata] = useState<Record<string, { assetClass?: string }>>(() => {
+    const saved = localStorage.getItem('z_money_ticker_metadata');
+    return saved ? JSON.parse(saved) : {};
   });
   const [isEditingTickers, setIsEditingTickers] = useState(false);
   const [appPassword, setAppPassword] = useState(() => localStorage.getItem('z_money_pass') || '');
@@ -173,6 +182,7 @@ export default function App() {
       z_money_market_data: marketData,
       z_money_theme: theme,
       z_money_ticker_order: tickerOrder,
+      z_money_ticker_metadata: tickerMetadata,
       z_money_pass: appPassword,
       z_money_net_worth: netWorthEntries
     };
@@ -427,6 +437,7 @@ export default function App() {
     const fullData = {
       transactions,
       tickerOrder,
+      tickerMetadata,
       netWorthEntries,
       weeklyPrices,
       theme,
@@ -450,6 +461,7 @@ export default function App() {
         if (window.confirm('確定要恢復全系統備份嗎？這將會覆蓋目前的「所有」資料。')) {
           if (data.transactions) setTransactions(data.transactions);
           if (data.tickerOrder) setTickerOrder(data.tickerOrder);
+          if (data.tickerMetadata) setTickerMetadata(data.tickerMetadata);
           if (data.netWorthEntries) setNetWorthEntries(data.netWorthEntries);
           if (data.weeklyPrices) setWeeklyPrices(data.weeklyPrices);
           if (data.theme) setTheme(data.theme);
@@ -692,7 +704,32 @@ export default function App() {
       if (tickerOrder.includes(oldTicker)) {
         setTickerOrder(prev => prev.map(t => t === oldTicker ? newTicker : t));
       }
+
+      // Update metadata
+      if (tickerMetadata[oldTicker]) {
+        setTickerMetadata(prev => {
+          const next = { ...prev };
+          next[newTicker] = next[oldTicker];
+          delete next[oldTicker];
+          return next;
+        });
+      }
+
+      // Ask for Asset Class
+      const ASSET_CLASSES = ['台股', '美股', 'ETF', '債券', '現金', '加密貨幣', '其他'];
+      const currentClass = tickerMetadata[newTicker]?.assetClass || '未分類';
+      const classInput = window.prompt(`請設定「${newName}」的資產類別\n預設：${ASSET_CLASSES.join('、')}\n(你也可以直接輸入新的類別名稱)`, currentClass);
+      if (classInput) {
+        handleUpdateTickerAssetClass(newTicker, classInput);
+      }
     }
+  };
+
+  const handleUpdateTickerAssetClass = (ticker: string, assetClass: string) => {
+    setTickerMetadata(prev => ({
+      ...prev,
+      [ticker]: { ...prev[ticker], assetClass }
+    }));
   };
 
   const handleEditTx = (tx: Transaction) => {
@@ -1313,6 +1350,8 @@ export default function App() {
               setActiveView={setActiveView}
               tickerOrder={tickerOrder}
               setWeeklyPrices={setWeeklyPrices}
+              tickerMetadata={tickerMetadata}
+              onUpdateAssetClass={handleUpdateTickerAssetClass}
             />
           )}
 
@@ -1324,7 +1363,10 @@ export default function App() {
               onToggleRealized={handleToggleRealized}
               netWorthEntries={netWorthEntries}
               setNetWorthEntries={setNetWorthEntries}
-              historicalChartData={chartData}
+              historicalChartData={finalChartData}
+              tickerMetadata={tickerMetadata}
+              holdings={appData.activeHoldings}
+              marketPrices={marketData.prices}
             />
           )}
 
