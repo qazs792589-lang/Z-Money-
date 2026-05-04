@@ -57,6 +57,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
     Object.entries(appData.stockGroups).forEach(([ticker, txs]: [string, any]) => {
       const realizedItems = (appData.realizedList || []).filter((r: RealizedProfit) => r.ticker === ticker);
       if (realizedItems.length === 0) return;
+      const currentShares = appData.holdingsMap?.[ticker]?.currentShares || 0;
 
       const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
       const totalRealizedCost = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalCost, 0);
