@@ -202,6 +202,11 @@ export default function App() {
       document.documentElement.setAttribute('data-theme', theme);
     }
   }, [theme]);
+
+  // 切換選單時自動捲動到頂部
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeView]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const weeklyFileInputRef = useRef<HTMLInputElement>(null);
 

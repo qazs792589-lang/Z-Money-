@@ -172,7 +172,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               "h-1.5 rounded-full transition-all duration-500 ease-out",
               page === i
                 ? "bg-[var(--accent)] w-10 shadow-[0_0_15px_var(--accent-glow)]"
-                : "bg-[var(--border)] w-3 opacity-40 group-hover:opacity-100"
+                : "bg-[var(--text-dim)] w-3 opacity-40 group-hover:opacity-100"
             )} />
           </button>
         ))}

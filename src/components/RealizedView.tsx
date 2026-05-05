@@ -84,6 +84,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
       const totalRealizedCost = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalCost, 0);
       const totalRevenue = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalRevenue, 0);
+      const totalRealizedShares = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + (r.shares || 0), 0);
 
       const displayRows = [...txs].sort((a, b) => a.date.localeCompare(b.date)).map(tx => {
         const realizedInfo = realizedItems.find((r: RealizedProfit) => r.sellTxId === tx.id);
@@ -107,6 +108,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
         cumulativeProfit: totalProfit,
         cumulativeCost: totalRealizedCost,
         cumulativeRevenue: totalRevenue,
+        cumulativeShares: totalRealizedShares,
         isHolding: currentShares > 0,
         lastOpDate
       };
@@ -285,17 +287,23 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                   </div>
 
                   {/* Header Metrics */}
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border)] mt-2">
+                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[var(--border)] mt-2">
                     <div className="flex flex-col">
                       <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">累積總成本</span>
                       <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
                         ${(group.cumulativeCost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
-                    <div className="flex flex-col text-right">
+                    <div className="flex flex-col text-center border-x border-[var(--border)] px-4">
                       <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">累積總收入</span>
                       <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
                         ${(group.cumulativeRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">已實現股數</span>
+                      <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                        {(group.cumulativeShares || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
                       </span>
                     </div>
                   </div>
