@@ -60,6 +60,26 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   const [mDate, setMDate] = useState(new Date().toISOString().split('T')[0]);
   const [mPrice, setMPrice] = useState('');
 
+  const allTickers = useMemo(() => {
+    // Get all tickers that have ever appeared in chartData
+    const dataTickers = new Set<string>();
+    chartData.forEach(row => {
+      Object.keys(row.breakdown || {}).forEach(t => dataTickers.add(t));
+    });
+
+    // Sort them based on the global tickerOrder from props
+    // Tickers not in tickerOrder will be placed at the end
+    return Array.from(dataTickers).sort((a, b) => {
+      const indexA = tickerOrder.indexOf(a);
+      const indexB = tickerOrder.indexOf(b);
+      
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }, [chartData, tickerOrder]);
+
   const pieData = useMemo(() => {
     const holdings = appData.activeHoldings || [];
     return holdings.map(h => {
@@ -446,13 +466,13 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <thead>
                       <tr className="bg-[var(--bg-tertiary)] text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] border-b border-[var(--border)]">
                         <th className="px-6 py-5 sticky left-0 bg-[var(--bg-tertiary)] z-20 shadow-[2px_0_10px_rgba(0,0,0,0.2)]">日期</th>
-                        {/* Dynamic ticker columns */}
-                        {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
-                          <th key={ticker} className="px-6 py-5 text-right min-w-[100px] font-mono">{ticker}</th>
+                        {/* Dynamic ticker columns - Fix: Use synced allTickers */}
+                        {allTickers.map(ticker => (
+                          <th key={ticker} className="px-6 py-5 text-center min-w-[100px] font-mono">{ticker}</th>
                         ))}
-                        <th className="px-6 py-5 text-right text-[var(--danger)] min-w-[120px] bg-[var(--danger)]/5">投入本金</th>
-                        <th className="px-6 py-5 text-right text-[var(--accent)] min-w-[120px] bg-[var(--accent)]/5">市值 (含息)</th>
-                        <th className="px-8 py-5 text-right min-w-[140px] bg-[var(--success)]/5">帳面損益</th>
+                        <th className="px-6 py-5 text-center text-[var(--accent)] min-w-[120px] bg-[var(--accent)]/5">市值</th>
+                        <th className="px-6 py-5 text-center text-[var(--danger)] min-w-[120px] bg-[var(--danger)]/5">投入本金 (含息)</th>
+                        <th className="px-8 py-5 text-center min-w-[140px] bg-[var(--success)]/5">帳面損益</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)]/50">
@@ -461,14 +481,14 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                           <td className="px-6 py-5 font-mono text-[11px] font-bold sticky left-0 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-tertiary)] z-10 border-r border-[var(--border)]/30">
                             {row.name.replace(/-/g, '/')}
                           </td>
-                          {/* Dynamic ticker values */}
-                          {Object.keys(chartData[0]?.breakdown || {}).map(ticker => (
+                          {/* Dynamic ticker values - Fix: Use synced allTickers */}
+                          {allTickers.map(ticker => (
                             <td key={ticker} className="px-6 py-5 font-mono text-[11px] text-right text-[var(--text-main)] opacity-70">
                               {row.breakdown?.[ticker] > 0 ? `$${row.breakdown[ticker].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
                             </td>
                           ))}
-                          <td className="px-6 py-5 font-mono text-[11px] text-right text-[var(--danger)] opacity-80">${row.cost.toLocaleString()}</td>
                           <td className="px-6 py-5 font-mono text-[11px] text-right text-[var(--accent)] font-black">${row.value.toLocaleString()}</td>
+                          <td className="px-6 py-5 font-mono text-[11px] text-right text-[var(--danger)] opacity-80">${row.cost.toLocaleString()}</td>
                           <td className={cn("px-8 py-5 font-mono text-xs font-black text-right", row.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                             <div className="flex flex-col items-end">
                               <span>{row.profit >= 0 ? '+' : ''}{row.profit.toLocaleString()}</span>

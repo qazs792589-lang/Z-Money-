@@ -303,63 +303,92 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
                 {expandedTickers[ticker] !== false && (
                   <div className="overflow-x-auto custom-scrollbar bg-[var(--bg-primary)]/50">
-                    <table className="w-full text-left min-w-[900px]">
+                    <table className="w-full text-left min-w-[800px]">
                       <thead>
-                        <tr className="text-[9px] text-[var(--text-dim)] font-bold uppercase tracking-widest border-b border-[var(--border)]">
-                          <th className="px-6 py-3">日期</th>
-                          <th className="px-6 py-3">股數</th>
-                          <th className="px-6 py-3">淨收支</th>
-                          <th className="px-6 py-3">已結損益</th>
-                          <th className="px-6 py-3">ROI%</th>
-                          <th className="px-6 py-3 text-right">備註</th>
+                        <tr className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] bg-[var(--bg-tertiary)]/30">
+                          <th className="px-6 py-4 text-center">日期</th>
+                          <th className="px-6 py-4 text-center">單價</th>
+                          <th className="px-6 py-4 text-center">股數 (買負賣正)</th>
+                          <th className="px-6 py-4 text-center">額外費用</th>
+                          <th className="px-6 py-4 text-center">淨收支</th>
+                          <th className="px-6 py-4 text-center">已結損益</th>
+                          <th className="px-6 py-4 text-center">ROI%</th>
+                          <th className="px-6 py-4 text-right">備註</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--border)]">
-                        {group.transactions.map((tx: any) => (
-                          <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]")}>
-                            <td className="px-6 py-3 font-mono text-xs">{tx.date}</td>
-                            <td className="px-6 py-3 font-mono text-xs">{(tx.quantity || 0).toLocaleString()}</td>
-                            <td className={cn("px-6 py-3 font-mono text-xs font-bold", (tx.totalAmount || 0) <= 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
-                              {(tx.totalAmount || 0) > 0 ? '+' : ''}{(tx.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            </td>
-                            <td className={cn("px-6 py-3 font-mono text-xs font-bold", tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                              {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString()}` : '-'}
-                            </td>
-                            <td className="px-6 py-3">
-                              {tx.realizedRoi !== undefined ? (
-                                <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold", tx.realizedRoi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
-                                  {tx.realizedRoi.toFixed(1)}%
-                                </span>
-                              ) : '-'}
-                            </td>
-                            <td className="px-6 py-3 text-right">
-                              {editingId === tx.id ? (
-                                <input
-                                  autoFocus
-                                  className="elegant-input text-[10px] h-7 px-2 w-full max-w-[150px] ml-auto"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={() => saveEdit(tx.id)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit(tx.id);
-                                    if (e.key === 'Escape') setEditingId(null);
-                                  }}
-                                />
-                              ) : (
-                                <div 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    startEditing(tx.id, tx.notes || '');
-                                  }}
-                                  className="text-[10px] text-[var(--text-dim)] italic truncate max-w-[150px] ml-auto cursor-pointer hover:text-[var(--accent)] transition-colors"
-                                  title="點擊編輯備註"
-                                >
-                                  {tx.notes || <span className="opacity-30">新增備註...</span>}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                        {group.transactions.map((tx: any) => {
+                          const isBuy = tx.direction === 'BUY';
+                          const isSell = tx.direction === 'SELL';
+                          const isDividend = tx.direction === 'DIVIDEND';
+                          const totalFees = (tx.fee || 0) + (tx.tax || 0);
+                          
+                          // Cash Flow Logic: BUY is negative (outflow), SELL/DIVIDEND is positive (inflow)
+                          const cashFlow = isBuy ? -tx.totalAmount : Math.abs(tx.totalAmount);
+                          
+                          // Shares sign: BUY is negative, SELL is positive
+                          const displayQty = isBuy ? -tx.quantity : (isSell ? tx.quantity : 0);
+                          
+                          return (
+                            <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]/50")}>
+                              <td className="px-6 py-4 font-mono text-xs text-center">{tx.date}</td>
+                              <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-dim)]">
+                                {isDividend ? '-' : `$${(tx.unitPrice || 0).toLocaleString()}`}
+                              </td>
+                              <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
+                                isBuy ? "text-[var(--danger)]" : (isSell ? "text-[var(--success)]" : "text-[var(--text-dim)]")
+                              )}>
+                                {displayQty !== 0 ? `${displayQty > 0 ? '+' : ''}${displayQty.toLocaleString()}` : '-'}
+                              </td>
+                              <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-main)]">
+                                {totalFees > 0 ? `$${totalFees.toLocaleString()}` : '-'}
+                              </td>
+                              <td className={cn("px-6 py-4 font-mono text-xs font-black text-right", 
+                                isDividend ? "text-amber-500" : (cashFlow >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
+                              )}>
+                                {cashFlow > 0 ? '+' : ''}{cashFlow.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </td>
+                              <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
+                                isDividend ? "text-amber-500" : (tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
+                              )}>
+                                {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString()}` : '-'}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {tx.realizedRoi !== undefined ? (
+                                  <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold", tx.realizedRoi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
+                                    {tx.realizedRoi.toFixed(1)}%
+                                  </span>
+                                ) : '-'}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                {editingId === tx.id ? (
+                                  <input
+                                    autoFocus
+                                    className="elegant-input text-[10px] h-7 px-2 w-full max-w-[150px] ml-auto"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onBlur={() => saveEdit(tx.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveEdit(tx.id);
+                                      if (e.key === 'Escape') setEditingId(null);
+                                    }}
+                                  />
+                                ) : (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startEditing(tx.id, tx.notes || '');
+                                    }}
+                                    className="text-[10px] text-[var(--text-dim)] italic truncate max-w-[150px] ml-auto cursor-pointer hover:text-[var(--accent)] transition-colors"
+                                    title="點擊編輯備註"
+                                  >
+                                    {tx.notes || <span className="opacity-30">新增備註...</span>}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

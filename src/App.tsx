@@ -102,7 +102,7 @@ export default function App() {
   const [weeklyPrices, setWeeklyPrices] = useState<WeeklyPrice[]>(() => {
     const saved = localStorage.getItem('z_money_weekly_prices');
     const initial = saved ? JSON.parse(saved) : [];
-    
+
     // Inject benchmark data if ^TWII is missing
     const hasBenchmark = initial.some((p: any) => p.ticker === '^TWII');
     if (!hasBenchmark) {
@@ -128,7 +128,7 @@ export default function App() {
     }
     return initial;
   });
-  const [netWorthEntries, setNetWorthEntries] = useState<{date: string, assets: Record<string, number>}[]>(() => {
+  const [netWorthEntries, setNetWorthEntries] = useState<{ date: string, assets: Record<string, number> }[]>(() => {
     const saved = localStorage.getItem('z_money_net_worth');
     if (!saved) return [];
     const parsed = JSON.parse(saved);
@@ -568,7 +568,11 @@ export default function App() {
             shares -= t.quantity;
             cost -= (currentAvg * t.quantity);
           } else if (t.direction === 'DIVIDEND') {
-            cost -= t.totalAmount;
+            if (!t.isManualRealized) {
+              // Use Math.abs to handle inconsistent signs in backup data (some +, some -)
+              // Dividends should ALWAYS reduce the cost basis in net outlay approach
+              cost -= Math.abs(t.totalAmount);
+            }
           }
         });
 
@@ -603,7 +607,7 @@ export default function App() {
     // 1. Filter raw chartData to start from 2026
     const filteredBaseData = chartData.filter(d => d.name >= '2026-01-01');
     if (filteredBaseData.length === 0) return [];
-    
+
     // 2. Calculate Market ROI (TAIEX) relative to the NEW first date
     const benchmarkPrices = weeklyPrices.filter(p => p.ticker === '^TWII').sort((a, b) => a.date.localeCompare(b.date));
     const firstDate = filteredBaseData[0].name;
@@ -1026,7 +1030,7 @@ export default function App() {
                         <div className="flex flex-col">
                           <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-tighter mb-1 font-bold">{preview.feeLabel}</span>
                           <div className="relative group">
-                            <input 
+                            <input
                               type="number"
                               className="bg-transparent border-none p-0 text-2xl font-mono text-[var(--text-main)] font-black w-full focus:outline-none focus:ring-0 placeholder:opacity-20"
                               value={formData.manualFee}
