@@ -47,12 +47,12 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
             <div className={cn(
               "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase",
               tx.direction === 'BUY' ? "bg-[var(--danger)]/20 text-[var(--danger)]" :
-              tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-orange-400/10 text-orange-400"
+                tx.direction === 'SELL' ? "bg-[var(--success)]/20 text-[var(--success)]" : "bg-orange-400/10 text-orange-400"
             )}>
               {tx.direction === 'BUY' ? '買入' : tx.direction === 'SELL' ? '賣出' : '配息'}
             </div>
             {isTxRealized(tx) && (
-              <span className="text-[8px] font-bold text-[var(--text-dim)] opacity-60 scale-90 whitespace-nowrap">(以實現)</span>
+              <span className="text-[8px] font-bold text-[var(--text-dim)] opacity-60 scale-90 whitespace-nowrap">(已實現)</span>
             )}
           </div>
           <div className="truncate min-w-0 flex flex-col justify-center">
@@ -71,7 +71,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                   className={cn(
                     "w-5 h-5 flex items-center justify-center rounded-full transition-all border",
                     isTxRealized(tx)
-                      ? "bg-[var(--text-dim)] text-[var(--bg-primary)] border-transparent" 
+                      ? "bg-[var(--text-dim)] text-[var(--bg-primary)] border-transparent"
                       : "bg-transparent text-[var(--text-dim)] border-[var(--border)] opacity-30 hover:opacity-100"
                   )}
                   title={isTxRealized(tx) ? "取消標記為已實現" : "標記為已實現 (不計入持倉)"}

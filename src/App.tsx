@@ -630,13 +630,13 @@ export default function App() {
       // Linear Interpolation for Market Price to avoid step-like appearance
       let currentMarketPrice = baseMarketPrice;
       const exactEntry = benchmarkPrices.find(p => p.date === d.name);
-      
+
       if (exactEntry) {
         currentMarketPrice = exactEntry.price;
       } else {
         const prevEntry = benchmarkPrices.filter(p => p.date < d.name).reverse()[0];
         const nextEntry = benchmarkPrices.find(p => p.date > d.name);
-        
+
         if (prevEntry && nextEntry) {
           const t1 = new Date(prevEntry.date).getTime();
           const t2 = new Date(nextEntry.date).getTime();
@@ -671,6 +671,26 @@ export default function App() {
 
   const handleAddTransaction = () => {
     if (!formData.ticker || formData.unitPrice < 0 || formData.quantity <= 0) return;
+
+    if (formData.direction === 'SELL') {
+      // 安全地計算真正可用的剩餘庫存 (總買入 - 總賣出，排除當前正在編輯的這筆)
+      const relevantTxs = transactions.filter(t => t.ticker === formData.ticker);
+      let trueAvailableShares = 0;
+      relevantTxs.forEach(t => {
+        if (t.direction === 'BUY') trueAvailableShares += t.quantity;
+        if (t.direction === 'SELL' && t.id !== editingTxId) {
+          trueAvailableShares -= t.quantity;
+        }
+      });
+      
+      const maxAllowed = Math.max(0, trueAvailableShares);
+
+      if (formData.quantity > maxAllowed + 0.0001) {
+        alert(`錯誤：賣出數量 (${formData.quantity}) 不可大於真實可用庫存 (${maxAllowed.toLocaleString()})！\n\n請確認先前的買入紀錄是否正確。`);
+        return;
+      }
+    }
+
     const newTx: Transaction = {
       id: editingTxId || Math.random().toString(36).substr(2, 9),
       date: formData.date,
