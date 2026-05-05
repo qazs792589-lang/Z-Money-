@@ -35,6 +35,7 @@ const DraggablePill: React.FC<DraggablePillProps> = ({
         zIndex: 50 
       }}
       transition={{ type: "spring", stiffness: 500, damping: 30, mass: 1 }}
+      style={{ touchAction: 'pan-x pan-y' }}
       className={cn(
         "px-4 py-2 rounded-2xl font-black text-xs whitespace-nowrap border shadow-sm flex items-center gap-2 transition-all hardware-accel no-select cursor-pointer relative",
         isSelected 
@@ -48,7 +49,8 @@ const DraggablePill: React.FC<DraggablePillProps> = ({
     >
       {isEditing && (
         <div
-          className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors touch-none"
+          className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors"
+          style={{ touchAction: 'none' }}
           onPointerDown={(e) => dragControls.start(e)}
         >
           <GripVertical size={14} />

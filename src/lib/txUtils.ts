@@ -9,7 +9,11 @@ import { Transaction } from '../types';
  * - isManualRealized: Explicit user override.
  */
 export const isTxRealized = (tx: Transaction): boolean => {
-  return tx.isManualRealized !== undefined 
-    ? tx.isManualRealized 
-    : (tx.direction !== 'BUY');
+  // BUY 永遠未實現 (增加活動庫存)
+  if (tx.direction === 'BUY') return false;
+  // SELL 永遠已實現 (扣除庫存並產生歷史紀錄)
+  if (tx.direction === 'SELL') return true;
+  
+  // DIVIDEND 允許手動指定 (預設為已實現)
+  return tx.isManualRealized !== undefined ? tx.isManualRealized : true;
 };

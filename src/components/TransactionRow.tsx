@@ -66,18 +66,20 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                 >
                   <Edit2 size={10} />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleRealized(tx.id); }}
-                  className={cn(
-                    "w-5 h-5 flex items-center justify-center rounded-full transition-all border",
-                    isTxRealized(tx)
-                      ? "bg-[var(--text-dim)] text-[var(--bg-primary)] border-transparent"
-                      : "bg-transparent text-[var(--text-dim)] border-[var(--border)] opacity-30 hover:opacity-100"
-                  )}
-                  title={isTxRealized(tx) ? "取消標記為已實現" : "標記為已實現 (不計入持倉)"}
-                >
-                  <Check size={10} strokeWidth={4} />
-                </button>
+                {tx.direction === 'DIVIDEND' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggleRealized(tx.id); }}
+                    className={cn(
+                      "w-5 h-5 flex items-center justify-center rounded-full transition-all border",
+                      isTxRealized(tx)
+                        ? "bg-[var(--text-dim)] text-[var(--bg-primary)] border-transparent" 
+                        : "bg-transparent text-[var(--text-dim)] border-[var(--border)] opacity-30 hover:opacity-100"
+                    )}
+                    title={isTxRealized(tx) ? "取消標記為已實現" : "標記為已實現 (計入歷史損益)"}
+                  >
+                    <Check size={10} strokeWidth={4} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onDelete(tx.id); }}
                   className="p-1.5 text-[var(--danger)] hover:bg-[var(--bg-primary)] rounded transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
