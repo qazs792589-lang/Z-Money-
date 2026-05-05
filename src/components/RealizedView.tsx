@@ -326,8 +326,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                           // Cash Flow Logic: BUY is negative (outflow), SELL/DIVIDEND is positive (inflow)
                           const cashFlow = isBuy ? -tx.totalAmount : Math.abs(tx.totalAmount);
                           
-                          // Shares sign: BUY is POSITIVE (red), SELL is NEGATIVE (green)
-                          const displayQty = isBuy ? tx.quantity : (isSell ? -tx.quantity : 0);
+                          // Shares sign: BUY is NEGATIVE (green), SELL is POSITIVE (red)
+                          const displayQty = isBuy ? -tx.quantity : (isSell ? tx.quantity : 0);
                           
                           return (
                             <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]/50")}>
@@ -336,7 +336,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                                 {isDividend ? '-' : `$${(tx.unitPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
-                                isBuy ? "text-[var(--success)]" : (isSell ? "text-[var(--danger)]" : "text-[var(--text-dim)]")
+                                isBuy ? "text-[var(--danger)]" : (isSell ? "text-[var(--success)]" : "text-[var(--text-dim)]")
                               )}>
                                 {displayQty !== 0 ? `${displayQty > 0 ? '+' : ''}${displayQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>

@@ -627,8 +627,29 @@ export default function App() {
         if (t.direction === 'DIVIDEND') cashFlow -= t.totalAmount;
       });
 
-      const currentMarketEntry = benchmarkPrices.filter(p => p.date <= d.name).reverse()[0] || benchmarkPrices[0];
-      const currentMarketPrice = currentMarketEntry?.price || baseMarketPrice;
+      // Linear Interpolation for Market Price to avoid step-like appearance
+      let currentMarketPrice = baseMarketPrice;
+      const exactEntry = benchmarkPrices.find(p => p.date === d.name);
+      
+      if (exactEntry) {
+        currentMarketPrice = exactEntry.price;
+      } else {
+        const prevEntry = benchmarkPrices.filter(p => p.date < d.name).reverse()[0];
+        const nextEntry = benchmarkPrices.find(p => p.date > d.name);
+        
+        if (prevEntry && nextEntry) {
+          const t1 = new Date(prevEntry.date).getTime();
+          const t2 = new Date(nextEntry.date).getTime();
+          const tCur = new Date(d.name).getTime();
+          const ratio = (tCur - t1) / (t2 - t1);
+          currentMarketPrice = prevEntry.price + (nextEntry.price - prevEntry.price) * ratio;
+        } else if (prevEntry) {
+          currentMarketPrice = prevEntry.price;
+        } else if (nextEntry) {
+          currentMarketPrice = nextEntry.price;
+        }
+      }
+
       const marketRoi = ((currentMarketPrice / baseMarketPrice) - 1) * 100;
 
       if (idx > 0) {
