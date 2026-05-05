@@ -308,7 +308,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <tr className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] bg-[var(--bg-tertiary)]/30">
                           <th className="px-6 py-4 text-center">日期</th>
                           <th className="px-6 py-4 text-center">單價</th>
-                          <th className="px-6 py-4 text-center">股數 (買負賣正)</th>
+                          <th className="px-6 py-4 text-center">股數</th>
                           <th className="px-6 py-4 text-center">額外費用</th>
                           <th className="px-6 py-4 text-center">淨收支</th>
                           <th className="px-6 py-4 text-center">已結損益</th>
@@ -326,32 +326,32 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                           // Cash Flow Logic: BUY is negative (outflow), SELL/DIVIDEND is positive (inflow)
                           const cashFlow = isBuy ? -tx.totalAmount : Math.abs(tx.totalAmount);
                           
-                          // Shares sign: BUY is negative, SELL is positive
-                          const displayQty = isBuy ? -tx.quantity : (isSell ? tx.quantity : 0);
+                          // Shares sign: BUY is POSITIVE (red), SELL is NEGATIVE (green)
+                          const displayQty = isBuy ? tx.quantity : (isSell ? -tx.quantity : 0);
                           
                           return (
                             <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]/50")}>
                               <td className="px-6 py-4 font-mono text-xs text-center">{tx.date}</td>
                               <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-dim)]">
-                                {isDividend ? '-' : `$${(tx.unitPrice || 0).toLocaleString()}`}
+                                {isDividend ? '-' : `$${(tx.unitPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
-                                isBuy ? "text-[var(--danger)]" : (isSell ? "text-[var(--success)]" : "text-[var(--text-dim)]")
+                                isBuy ? "text-[var(--success)]" : (isSell ? "text-[var(--danger)]" : "text-[var(--text-dim)]")
                               )}>
-                                {displayQty !== 0 ? `${displayQty > 0 ? '+' : ''}${displayQty.toLocaleString()}` : '-'}
+                                {displayQty !== 0 ? `${displayQty > 0 ? '+' : ''}${displayQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-main)]">
-                                {totalFees > 0 ? `$${totalFees.toLocaleString()}` : '-'}
+                                {totalFees > 0 ? `$${totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-black text-right", 
                                 isDividend ? "text-amber-500" : (cashFlow >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
-                                {cashFlow > 0 ? '+' : ''}{cashFlow.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                {cashFlow !== 0 ? `${cashFlow > 0 ? '+' : ''}${cashFlow.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
                                 isDividend ? "text-amber-500" : (tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
-                                {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString()}` : '-'}
+                                {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className="px-6 py-4 text-center">
                                 {tx.realizedRoi !== undefined ? (

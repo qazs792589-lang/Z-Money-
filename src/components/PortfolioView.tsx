@@ -352,7 +352,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      stroke="var(--text-dim)"
+                      stroke="var(--success)"
                       fontSize={9}
                       axisLine={false}
                       tickLine={false}
@@ -608,7 +608,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         yAxisId="right"
                         orientation="right"
                         type="number"
-                        stroke="var(--text-dim)" 
+                        stroke="var(--success)" 
                         fontSize={8} 
                         axisLine={false} 
                         tickLine={false} 
