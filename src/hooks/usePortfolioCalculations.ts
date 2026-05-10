@@ -128,10 +128,11 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
     });
 
     const unrealizedPL = totalMarketValue - totalInvested;
+    const unrealizedRoi = totalInvested > 0 ? (unrealizedPL / totalInvested) * 100 : 0;
     const totalPL = unrealizedPL + totalRealizedPL;
     const roi = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
 
-    return { totalMarketValue, totalInvested, unrealizedPL, totalRealizedPL, totalPL, roi };
+    return { totalMarketValue, totalInvested, unrealizedPL, totalRealizedPL, totalPL, roi, unrealizedRoi };
   }, [appData.activeHoldings, appData.realizedList, marketData.prices, weeklyPrices]);
 
   return { appData, stats };

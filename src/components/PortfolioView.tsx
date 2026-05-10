@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { LayoutDashboard, Activity, Edit2, TrendingUp, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Layers } from 'lucide-react';
+import { LayoutDashboard, Activity, Edit2, TrendingUp, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Layers, Trash2 } from 'lucide-react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -24,6 +24,7 @@ interface PortfolioViewProps {
     totalMarketValue: number;
     unrealizedPL: number;
     roi: number;
+    unrealizedRoi: number;
   };
   chartData: any[];
   appData: {
@@ -154,7 +155,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
             <div className={cn("stat-value text-2xl font-mono", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
               {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              <span className="text-xs ml-2 opacity-60 font-sans tracking-normal">({stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%)</span>
+              <span className="text-xs ml-2 opacity-60 font-sans tracking-normal">({stats.unrealizedRoi >= 0 ? '+' : ''}{stats.unrealizedRoi.toFixed(2)}%)</span>
             </div>
           </div>
         </div>
@@ -418,36 +419,21 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       yAxisId="left"
                       type="monotone"
                       name="當前市值"
-                      dataKey={(d) => {
-                        const idx = chartData.indexOf(d);
-                        const win = 3;
-                        const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
-                        return subset.reduce((acc, curr) => acc + curr.value, 0) / subset.length;
-                      }}
+                      dataKey="value"
                       stroke="var(--accent)" strokeWidth={4} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: 'var(--accent)' }}
                     />
                     <Line
                       yAxisId="left"
                       type="monotone"
                       name="投入成本"
-                      dataKey={(d) => {
-                        const idx = chartData.indexOf(d);
-                        const win = 3;
-                        const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
-                        return subset.reduce((acc, curr) => acc + curr.cost, 0) / subset.length;
-                      }}
+                      dataKey="cost"
                       stroke="var(--danger)" strokeWidth={2} strokeDasharray="5 5" opacity={0.6} dot={false} activeDot={false}
                     />
                     <Line
                       yAxisId="right"
                       type="monotone"
                       name="帳面盈虧"
-                      dataKey={(d) => {
-                        const idx = chartData.indexOf(d);
-                        const win = 3;
-                        const subset = chartData.slice(Math.max(0, idx - win), idx + 1);
-                        return subset.reduce((acc, curr) => acc + curr.profit, 0) / subset.length;
-                      }}
+                      dataKey="profit"
                       stroke="var(--success)" strokeWidth={3} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: 'var(--success)' }}
                     />
                   </ComposedChart>
@@ -701,7 +687,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </div>
 
             {/* Market Data Entry Section */}
-            <div className="elegant-card bg-opacity-40 backdrop-blur-md">
+            <div id="market-bench-input" className="elegant-card bg-opacity-40 backdrop-blur-md">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 rounded-xl bg-[var(--bg-tertiary)] text-[var(--accent)]">
                   <Edit2 size={16} />
@@ -735,7 +721,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     setWeeklyPrices(prev => {
                       const others = prev.filter(p => !(p.date === mDate && p.ticker === '^TWII'));
                       return [...others, { date: mDate, ticker: '^TWII', price: parseFloat(mPrice) }]
-                        .sort((a, b) => a.date.localeCompare(b.date));
+                        .sort((a, b) => b.date.localeCompare(a.date));
                     });
                     setMPrice('');
                     alert('大盤數據已成功記錄！');
@@ -744,9 +730,67 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 >
                   儲存
                 </button>
-               </div>
-             </div>
-           </div>
+              </div>
+
+              {/* TAIEX History List */}
+              <div className="mt-8 border-t border-[var(--border)] pt-6">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-4 flex items-center gap-2">
+                   <Activity size={12} /> 歷史紀錄清單
+                </h4>
+                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-left">
+                    <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
+                      <tr className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)]">
+                        <th className="px-2 py-3">日期</th>
+                        <th className="px-2 py-3">點數</th>
+                        <th className="px-2 py-3 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {weeklyPrices
+                        .filter(p => p.ticker === '^TWII')
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                        .map((p, idx) => (
+                        <tr key={idx} className="hover:bg-[var(--bg-primary)]/40 transition-colors group">
+                          <td className="px-2 py-3 font-mono text-[10px] text-[var(--text-main)]">{p.date}</td>
+                          <td className="px-2 py-3 font-mono text-[10px] text-[var(--accent)] font-bold">{p.price.toLocaleString()}</td>
+                          <td className="px-2 py-3 text-right flex justify-end gap-1">
+                            <button 
+                              onClick={() => {
+                                setMDate(p.date);
+                                setMPrice(p.price.toString());
+                                document.getElementById('market-bench-input')?.scrollIntoView({ behavior: 'smooth' });
+                              }}
+                              className="p-1.5 text-[var(--text-dim)] hover:text-[var(--accent)] transition-all"
+                              title="編輯此筆紀錄"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (window.confirm('確定要刪除這筆大盤紀錄嗎？')) {
+                                  setWeeklyPrices(prev => prev.filter(x => !(x.date === p.date && x.ticker === '^TWII')));
+                                }
+                              }}
+                              className="p-1.5 text-[var(--text-dim)] hover:text-[var(--danger)] transition-all"
+                              title="刪除此筆紀錄"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {weeklyPrices.filter(p => p.ticker === '^TWII').length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-2 py-8 text-center text-[10px] text-[var(--text-dim)] italic">尚無大盤數據</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
          </motion.div>
        </div>
      </div>

@@ -861,7 +861,7 @@ export default function App() {
           </div>
           <div className="h-8 w-[1px] bg-[var(--border)] hidden sm:block" />
           <div className="flex flex-col items-end hidden sm:flex">
-            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">總損益 (含股息)</span>
+            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">總損益 (含歷史+股息)</span>
             <div className={cn("text-xs md:text-sm font-mono font-bold", stats.totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
               {stats.totalPL >= 0 ? '▲' : '▼'} ${Math.abs(stats.totalPL).toLocaleString()}
               <span className="ml-2 text-[10px] md:text-xs">({stats.roi.toFixed(2)}%)</span>

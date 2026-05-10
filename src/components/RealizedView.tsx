@@ -121,6 +121,15 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
     });
   }, [appData?.stockGroups, appData?.realizedList, appData?.holdingsMap]);
 
+  const globalRealized = useMemo(() => {
+    const list = appData?.realizedList || [];
+    const profit = list.reduce((sum: number, r: any) => sum + r.profit, 0);
+    const cost = list.reduce((sum: number, r: any) => sum + r.totalCost, 0);
+    const revenue = list.reduce((sum: number, r: any) => sum + r.totalRevenue, 0);
+    const roi = cost > 0 ? (profit / cost) * 100 : 0;
+    return { profit, cost, revenue, roi };
+  }, [appData?.realizedList]);
+
   const categoryData = useMemo(() => {
     const categories: Record<string, number> = {};
     
@@ -247,6 +256,32 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
       {activeTab === 'details' ? (
         <div className="space-y-6">
+          {/* Global Realized Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="elegant-card p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)]">
+              <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總成本</span>
+              <p className="text-xl md:text-2xl font-mono font-black text-[var(--text-main)]">
+                ${globalRealized.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="elegant-card p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)]">
+              <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收入</span>
+              <p className="text-xl md:text-2xl font-mono font-black text-[var(--text-main)]">
+                ${globalRealized.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="elegant-card p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--success)]/30">
+              <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收益 (收益率)</span>
+              <div className="flex flex-col">
+                <p className={cn("text-xl md:text-2xl font-mono font-black", globalRealized.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                  {globalRealized.profit >= 0 ? '+' : ''}{globalRealized.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+                <p className={cn("text-xs font-bold font-mono mt-1", globalRealized.roi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                  {globalRealized.roi >= 0 ? '▲' : '▼'} {Math.abs(globalRealized.roi).toFixed(2)}%
+                </p>
+              </div>
+            </div>
+          </div>
 
           {tickerHistory.map(([ticker, group]: [string, any]) => {
             return (
