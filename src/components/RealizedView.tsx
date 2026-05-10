@@ -257,27 +257,27 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       {activeTab === 'details' ? (
         <div className="space-y-6">
           {/* Global Realized Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="elegant-card p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)]">
-              <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總成本</span>
-              <p className="text-xl md:text-2xl font-mono font-black text-[var(--text-main)]">
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className="elegant-card p-2 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)] flex flex-col justify-between">
+              <span className="text-[7px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總成本</span>
+              <p className="text-xs md:text-2xl font-mono font-black text-[var(--text-main)] truncate">
                 ${globalRealized.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
-            <div className="elegant-card p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)]">
-              <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收入</span>
-              <p className="text-xl md:text-2xl font-mono font-black text-[var(--text-main)]">
+            <div className="elegant-card p-2 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)] flex flex-col justify-between">
+              <span className="text-[7px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收入</span>
+              <p className="text-xs md:text-2xl font-mono font-black text-[var(--text-main)] truncate">
                 ${globalRealized.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
-            <div className="elegant-card p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--success)]/30">
-              <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收益 (收益率)</span>
+            <div className="elegant-card p-2 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--success)]/30 flex flex-col justify-between">
+              <span className="text-[7px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收益</span>
               <div className="flex flex-col">
-                <p className={cn("text-xl md:text-2xl font-mono font-black", globalRealized.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                <p className={cn("text-xs md:text-2xl font-mono font-black truncate", globalRealized.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                   {globalRealized.profit >= 0 ? '+' : ''}{globalRealized.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </p>
-                <p className={cn("text-xs font-bold font-mono mt-1", globalRealized.roi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                  {globalRealized.roi >= 0 ? '▲' : '▼'} {Math.abs(globalRealized.roi).toFixed(2)}%
+                <p className={cn("text-[8px] md:text-xs font-bold font-mono mt-0.5 md:mt-1", globalRealized.roi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                  {globalRealized.roi >= 0 ? '▲' : '▼'}{Math.abs(globalRealized.roi).toFixed(1)}%
                 </p>
               </div>
             </div>
