@@ -1,4 +1,4 @@
-import { History, FileUp, ChevronDown, PieChart as PieChartIcon, Activity, TrendingUp, Edit2, Trash2, Plus, Layers, LineChart as LucideLineChart, Check, ChevronRight, Clock } from 'lucide-react';
+import { History, FileUp, ChevronDown, PieChart as PieChartIcon, Activity, TrendingUp, Edit2, Trash2, Plus, Layers, LineChart as LucideLineChart, Check, ChevronRight, Clock, Wallet, Coins } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { cn } from '../lib/utils';
 import { RealizedProfit, Transaction, Holding } from '../types';
@@ -257,28 +257,48 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       {activeTab === 'details' ? (
         <div className="space-y-6">
           {/* Global Realized Summary */}
-          <div className="grid grid-cols-3 gap-2 md:gap-4">
-            <div className="elegant-card p-2 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)] flex flex-col justify-between">
-              <span className="text-[7px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總成本</span>
-              <p className="text-xs md:text-2xl font-mono font-black text-[var(--text-main)] truncate">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+            {/* Cost Card */}
+            <div className="elegant-card p-4 md:p-6 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-tertiary)] border-[var(--border)] group hover:border-[var(--accent)] transition-all duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-[var(--text-dim)]/10 text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors">
+                  <Wallet size={14} />
+                </div>
+                <span className="text-[10px] md:text-xs text-[var(--text-dim)] font-black uppercase tracking-widest">歷史總成本</span>
+              </div>
+              <p className="text-lg md:text-2xl font-mono font-black text-[var(--text-main)]">
                 ${globalRealized.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
-            <div className="elegant-card p-2 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--border)] flex flex-col justify-between">
-              <span className="text-[7px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收入</span>
-              <p className="text-xs md:text-2xl font-mono font-black text-[var(--text-main)] truncate">
+
+            {/* Revenue Card */}
+            <div className="elegant-card p-4 md:p-6 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-tertiary)] border-[var(--border)] group hover:border-[var(--accent)] transition-all duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                  <TrendingUp size={14} />
+                </div>
+                <span className="text-[10px] md:text-xs text-[var(--text-dim)] font-black uppercase tracking-widest">歷史總收入</span>
+              </div>
+              <p className="text-lg md:text-2xl font-mono font-black text-[var(--text-main)]">
                 ${globalRealized.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
-            <div className="elegant-card p-2 md:p-5 bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border-[var(--success)]/30 flex flex-col justify-between">
-              <span className="text-[7px] md:text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest block mb-1">歷史總收益</span>
-              <div className="flex flex-col">
-                <p className={cn("text-xs md:text-2xl font-mono font-black truncate", globalRealized.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+
+            {/* Profit Card (Full width on mobile) */}
+            <div className="col-span-2 md:col-span-1 elegant-card p-4 md:p-6 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-tertiary)] border-[var(--success)]/20 shadow-lg shadow-[var(--success)]/5 group hover:border-[var(--success)] transition-all duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn("p-1.5 rounded-lg", globalRealized.profit >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
+                  <Coins size={14} />
+                </div>
+                <span className="text-[10px] md:text-xs text-[var(--text-dim)] font-black uppercase tracking-widest">歷史總收益</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className={cn("text-2xl md:text-3xl font-mono font-black", globalRealized.profit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                   {globalRealized.profit >= 0 ? '+' : ''}{globalRealized.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </p>
-                <p className={cn("text-[8px] md:text-xs font-bold font-mono mt-0.5 md:mt-1", globalRealized.roi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                <span className={cn("text-xs md:text-sm font-bold font-mono", globalRealized.roi >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                   {globalRealized.roi >= 0 ? '▲' : '▼'}{Math.abs(globalRealized.roi).toFixed(1)}%
-                </p>
+                </span>
               </div>
             </div>
           </div>
@@ -322,23 +342,29 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                   </div>
 
                   {/* Header Metrics */}
-                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[var(--border)] mt-2">
+                  <div className="grid grid-cols-3 gap-2 md:gap-4 pt-5 border-t border-[var(--border)] mt-4">
                     <div className="flex flex-col">
-                      <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">累積總成本</span>
-                      <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                      <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                        <Wallet size={10} className="opacity-50" /> 累積成本
+                      </span>
+                      <span className="text-xs md:text-lg font-mono font-bold text-[var(--text-main)]">
                         ${(group.cumulativeCost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
-                    <div className="flex flex-col text-center border-x border-[var(--border)] px-4">
-                      <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">累積總收入</span>
-                      <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
+                    <div className="flex flex-col text-center border-x border-[var(--border)] px-2 md:px-4">
+                      <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1.5 flex items-center justify-center gap-1.5">
+                        <TrendingUp size={10} className="opacity-50" /> 累積收入
+                      </span>
+                      <span className="text-xs md:text-lg font-mono font-bold text-[var(--text-main)]">
                         ${(group.cumulativeRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
                     <div className="flex flex-col text-right">
-                      <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">已實現股數</span>
-                      <span className="text-sm md:text-base font-mono font-bold text-[var(--text-main)]">
-                        {(group.cumulativeShares || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
+                      <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1.5 flex items-center justify-end gap-1.5">
+                        <Check size={10} className="opacity-50" /> 已結股數
+                      </span>
+                      <span className="text-xs md:text-lg font-mono font-bold text-[var(--text-main)]">
+                        {(group.cumulativeShares || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[8px] opacity-50 ml-0.5">股</span>
                       </span>
                     </div>
                   </div>
