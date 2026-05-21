@@ -397,14 +397,14 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                     <table className="w-full text-left min-w-[800px]">
                       <thead>
                         <tr className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] bg-[var(--bg-tertiary)]/30">
-                          <th className="px-6 py-4 text-center">日期</th>
-                          <th className="px-6 py-4 text-center">單價</th>
-                          <th className="px-6 py-4 text-center">股數</th>
-                          <th className="px-6 py-4 text-center">額外費用</th>
-                          <th className="px-6 py-4 text-center">淨收支</th>
-                          <th className="px-6 py-4 text-center">已結損益</th>
-                          <th className="px-6 py-4 text-center">ROI%</th>
-                          <th className="px-6 py-4 text-right">備註</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">日期</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">單價</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">股數</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">額外費用</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">淨收支</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">已結損益</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">ROI%</th>
+                          <th className="px-6 py-4 text-right whitespace-nowrap">備註</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--border)]">
@@ -422,31 +422,31 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                           
                           return (
                             <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]/50")}>
-                              <td className="px-6 py-4 font-mono text-xs text-center">{tx.date}</td>
-                              <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-dim)]">
+                              <td className="px-6 py-4 font-mono text-xs text-center whitespace-nowrap">{tx.date}</td>
+                              <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-dim)] whitespace-nowrap">
                                 {isDividend ? '-' : `$${(tx.unitPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                               </td>
-                              <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
+                              <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right whitespace-nowrap", 
                                 isBuy ? "text-[var(--danger)]" : (isSell ? "text-[var(--success)]" : "text-[var(--text-dim)]")
                               )}>
                                 {displayQty !== 0 ? `${displayQty > 0 ? '+' : ''}${displayQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
-                              <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-main)]">
+                              <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-main)] whitespace-nowrap">
                                 {totalFees > 0 ? `$${totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
-                              <td className={cn("px-6 py-4 font-mono text-xs font-black text-right", 
+                              <td className={cn("px-6 py-4 font-mono text-xs font-black text-right whitespace-nowrap", 
                                 isDividend ? "text-amber-500" : (cashFlow >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
                                 {cashFlow !== 0 ? `${cashFlow > 0 ? '+' : ''}${cashFlow.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
-                              <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right", 
+                              <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right whitespace-nowrap", 
                                 isDividend ? "text-amber-500" : (tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
                                 {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
-                              <td className="px-6 py-4 text-center">
+                              <td className="px-6 py-4 text-center whitespace-nowrap">
                                 {tx.realizedRoi !== undefined ? (
-                                  <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold", tx.realizedRoi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
+                                  <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold whitespace-nowrap", tx.realizedRoi >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
                                     {tx.realizedRoi.toFixed(1)}%
                                   </span>
                                 ) : '-'}
@@ -455,7 +455,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                                 {editingId === tx.id ? (
                                   <input
                                     autoFocus
-                                    className="elegant-input text-[10px] h-7 px-2 w-full max-w-[150px] ml-auto"
+                                    className="elegant-input text-xs md:text-[13px] h-8 px-2 w-full max-w-[180px] ml-auto font-semibold"
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value)}
                                     onBlur={() => saveEdit(tx.id)}
@@ -470,7 +470,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                                       e.stopPropagation();
                                       startEditing(tx.id, tx.notes || '');
                                     }}
-                                    className="text-[10px] text-[var(--text-dim)] italic truncate max-w-[150px] ml-auto cursor-pointer hover:text-[var(--accent)] transition-colors"
+                                    className="text-xs md:text-[13px] text-[var(--text-main)] font-semibold truncate max-w-[180px] ml-auto cursor-pointer hover:text-[var(--accent)] transition-colors"
                                     title="點擊編輯備註"
                                   >
                                     {tx.notes || <span className="opacity-30">新增備註...</span>}

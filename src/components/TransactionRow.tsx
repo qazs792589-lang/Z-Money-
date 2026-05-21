@@ -95,8 +95,9 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
               <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </p>
             {tx.notes && (
-              <p className="text-[9px] md:text-[10px] text-[var(--text-dim)] mt-1.5 italic truncate max-w-[280px] leading-tight" title={tx.notes}>
-                <span className="not-italic opacity-60 mr-1">備註:</span>{tx.notes}
+              <p className="text-xs md:text-[13px] text-[var(--text-main)] mt-2.5 flex items-start gap-2 max-w-[320px] md:max-w-[500px] leading-relaxed" title={tx.notes}>
+                <span className="text-[var(--accent)] font-black text-[10px] md:text-[11px] uppercase tracking-wider bg-[var(--accent)]/10 px-2 py-0.5 rounded border border-[var(--accent)]/20 shrink-0 mt-0.5">備註</span>
+                <span className="text-[var(--text-main)] font-semibold break-words whitespace-pre-wrap flex-1">{tx.notes}</span>
               </p>
             )}
           </div>
