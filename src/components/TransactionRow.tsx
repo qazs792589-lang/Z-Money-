@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Edit2, Check, Trash2 } from 'lucide-react';
+import { Edit2, Check, Trash2, StickyNote } from 'lucide-react';
 import { Transaction } from '../types';
 import { cn } from '../lib/utils';
 import { isTxRealized } from '../lib/txUtils';
@@ -95,9 +95,9 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
               <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </p>
             {tx.notes && (
-              <p className="text-xs md:text-[13px] text-[var(--text-main)] mt-2.5 flex items-start gap-2 max-w-[320px] md:max-w-[500px] leading-relaxed" title={tx.notes}>
-                <span className="text-[var(--accent)] font-black text-[10px] md:text-[11px] uppercase tracking-wider bg-[var(--accent)]/10 px-2 py-0.5 rounded border border-[var(--accent)]/20 shrink-0 mt-0.5">備註</span>
-                <span className="text-[var(--text-main)] font-semibold break-words whitespace-pre-wrap flex-1">{tx.notes}</span>
+              <p className="text-xs md:text-[13px] text-[var(--text-main)] mt-1.5 flex items-center gap-1.5 max-w-[260px] md:max-w-[450px] leading-none" title={tx.notes}>
+                <StickyNote size={12} className="text-[var(--accent)] shrink-0" />
+                <span className="text-[var(--text-main)] font-semibold truncate flex-1">{tx.notes}</span>
               </p>
             )}
           </div>
