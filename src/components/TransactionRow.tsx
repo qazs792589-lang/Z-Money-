@@ -94,6 +94,11 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
               <span className="mx-2 opacity-30">|</span>
               <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </p>
+            {tx.notes && (
+              <p className="text-[9px] md:text-[10px] text-[var(--text-dim)] mt-1.5 italic truncate max-w-[280px] leading-tight" title={tx.notes}>
+                <span className="not-italic opacity-60 mr-1">備註:</span>{tx.notes}
+              </p>
+            )}
           </div>
         </div>
         <div className="text-right shrink-0 flex flex-col justify-center ml-2">
