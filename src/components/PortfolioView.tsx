@@ -456,9 +456,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         <th className="px-6 py-5 text-center text-[var(--danger)] min-w-[100px] md:min-w-[120px] bg-[var(--danger)]/5">投入本金</th>
                         <th className="px-6 py-5 text-center text-[var(--success)] min-w-[100px] md:min-w-[140px] bg-[var(--success)]/5">帳面損益</th>
                         {/* Dynamic ticker columns - Fix: Use synced allTickers */}
-                        {allTickers.map(ticker => (
-                          <th key={ticker} className="px-6 py-5 text-center min-w-[100px] font-mono border-l border-[var(--border)]/20">{ticker}</th>
-                        ))}
+                        {allTickers.map(ticker => <th key={ticker} className="px-6 py-5 text-center min-w-[100px] font-bold border-l border-[var(--border)]/20">{appData.holdingsMap?.[ticker]?.name || ticker}</th>)}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)]/50">
@@ -737,7 +735,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-4 flex items-center gap-2">
                    <Activity size={12} /> 歷史紀錄清單
                 </h4>
-                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                <div className="w-full">
                   <table className="w-full text-left">
                     <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
                       <tr className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)]">

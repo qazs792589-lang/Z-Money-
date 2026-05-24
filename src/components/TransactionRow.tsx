@@ -109,7 +109,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
           <p className={cn(
             "text-sm md:text-base font-mono font-black leading-none mt-1",
             tx.direction === 'BUY' ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
-          )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
       </motion.div>
     </motion.div>

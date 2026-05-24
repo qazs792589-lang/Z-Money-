@@ -1214,9 +1214,9 @@ export default function App() {
                                   </div>
 
                                   <div className="text-right flex-shrink-0 mt-2 md:mt-0">
-                                    <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                    <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                     <p className={cn("text-[10px] md:text-xs font-bold font-mono", unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                      {unrealizedPL >= 0 ? '▲' : '▼'} ${(Math.abs(unrealizedPL)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({roi.toFixed(2)}%)
+                                      {unrealizedPL >= 0 ? '▲' : '▼'} ${(Math.abs(unrealizedPL)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({roi.toFixed(2)}%)
                                     </p>
                                   </div>
                                 </div>
@@ -1236,7 +1236,7 @@ export default function App() {
                                   </div>
                                   <div>
                                     <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">總投入本金</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                   </div>
                                 </div>
                               </div>
@@ -1351,7 +1351,7 @@ export default function App() {
                                           {historicalShares > 0 && (
                                             <div className="flex items-center gap-3 opacity-80">
                                               <span className={cn("text-[10px] font-bold", historicalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                                {historicalPL >= 0 ? '▲' : '▼'} ${Math.abs(historicalPL).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                {historicalPL >= 0 ? '▲' : '▼'} ${Math.abs(historicalPL).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                               </span>
                                               <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-sm", historicalPL >= 0 ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]")}>
                                                 {historicalRoi >= 0 ? '+' : ''}{historicalRoi.toFixed(2)}%
