@@ -207,6 +207,190 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeView]);
+
+  // 啟動時自動載入初始備份資料 (若 LocalStorage 為空且無任何交易紀錄)
+  useEffect(() => {
+    const hasSavedData = localStorage.getItem('z_money_transactions');
+    if (!hasSavedData) {
+      async function loadInitialBackup() {
+        try {
+          console.log('[資料初始化] 偵測到本地無交易紀錄，正在載入預設備份資料...');
+          const response = await fetch('./Z-Money-FullBackup-2026-05-10.json');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.transactions) setTransactions(data.transactions);
+            if (data.tickerOrder) setTickerOrder(data.tickerOrder);
+            if (data.tickerMetadata) setTickerMetadata(data.tickerMetadata);
+            if (data.netWorthEntries) setNetWorthEntries(data.netWorthEntries);
+            if (data.weeklyPrices) setWeeklyPrices(data.weeklyPrices);
+            if (data.theme) setTheme(data.theme);
+            if (data.marketData) setMarketData(data.marketData);
+            console.log('[資料初始化] 成功載入預設備份資料！');
+          }
+        } catch (e) {
+          console.error('[資料初始化] 載入備份資料失敗:', e);
+        }
+      }
+      loadInitialBackup();
+    }
+  }, []);
+
+  // 啟動時自動從伺服器/靜態檔同步最新收盤價，並自動補登歷史價格紀錄
+  useEffect(() => {
+    async function syncMarketPrices() {
+      try {
+        console.log('[股價同步] 正在從伺服器獲取最新價格...');
+        const timestamp = Date.now();
+        let url = `./stock_prices.json?t=${timestamp}`;
+        if (window.location.hostname.includes('github.io')) {
+          const repoName = window.location.pathname.split('/')[1] || 'Z-Test';
+          url = `https://raw.githubusercontent.com/qazs792589-lang/${repoName}/main/stock_prices.json?t=${timestamp}`;
+        } else {
+          url = `https://raw.githubusercontent.com/qazs792589-lang/Z-Test/main/stock_prices.json?t=${timestamp}`;
+        }
+        console.log(`[股價同步] 正在獲取: ${url}`);
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) throw new Error('無法取得 stock_prices.json');
+        
+        const data = await response.json();
+        if (data && data.updated && data.prices) {
+          setMarketData(prev => {
+            console.log('[股價同步] 偵測到股價資料，已自動同步更新。最後更新時間:', data.updated);
+            return data;
+          });
+
+          // 2. 自動將今日最新收盤價補登到歷史價格紀錄中 (weeklyPrices)
+          // 轉換更新日期為台灣時間的 YYYY-MM-DD
+          const updateTime = new Date(data.updated);
+          const twDateStr = new Date(updateTime.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+          
+          setWeeklyPrices(prev => {
+            let hasChanges = false;
+            
+            // 1. 先更新已存在的日期之價格 (如果不同)
+            const updatedList = prev.map(wp => {
+              const serverPrice = data.prices[wp.ticker];
+              const date = (data.dates && data.dates[wp.ticker]) ? data.dates[wp.ticker] : twDateStr;
+              if (serverPrice !== undefined && wp.date === date) {
+                const numericPrice = Number(serverPrice);
+                if (!isNaN(numericPrice) && wp.price !== numericPrice) {
+                  console.log(`[股價同步] 更新 ${wp.ticker} 在 ${wp.date} 的收盤價: ${wp.price} -> ${numericPrice}`);
+                  hasChanges = true;
+                  return { ...wp, price: numericPrice };
+                }
+              }
+              return wp;
+            });
+            
+            // 2. 再補登不存在的價格
+            Object.entries(data.prices).forEach(([ticker, price]) => {
+              const numericPrice = Number(price);
+              if (isNaN(numericPrice)) return;
+              
+              // 優先使用該股票在資料庫中的實際交易日期
+              const date = (data.dates && data.dates[ticker]) ? data.dates[ticker] : twDateStr;
+              
+              // 檢查該股票在該日期是否已登錄過價格
+              const exists = updatedList.some(wp => wp.ticker === ticker && wp.date === date);
+              if (!exists) {
+                console.log(`[股價同步] 自動為 ${ticker} 登錄歷史收盤價: 日期 ${date}, 價格 ${numericPrice}`);
+                updatedList.push({
+                  date: date,
+                  ticker: ticker,
+                  price: numericPrice
+                });
+                hasChanges = true;
+              }
+            });
+            
+            if (hasChanges) {
+              return updatedList.sort((a, b) => {
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                return a.ticker.localeCompare(b.ticker);
+              });
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.warn('[股價同步] 自動同步價格失敗 (可能在離線狀態或檔案尚未產生):', err.message);
+      }
+    }
+    syncMarketPrices();
+  }, []);
+
+  // 本地端自動存檔備份至硬碟 (僅在 localhost 運作)
+  useEffect(() => {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocal || transactions.length === 0) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const fullData = {
+          transactions,
+          tickerOrder,
+          tickerMetadata,
+          netWorthEntries,
+          weeklyPrices,
+          theme,
+          marketData
+        };
+        const res = await fetch('/api/save-backup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fullData)
+        });
+        if (res.ok) {
+          console.log('[自動備份] 已成功將最新交易與持倉備份同步至本地硬碟 JSON 檔');
+        }
+      } catch (err) {
+        console.warn('[自動備份] 同步至本地硬碟失敗:', err);
+      }
+    }, 2000); // 延遲 2 秒防抖，避免連續輸入交易時頻繁寫入
+
+    return () => clearTimeout(timer);
+  }, [transactions, tickerOrder, tickerMetadata, netWorthEntries, weeklyPrices, theme, marketData]);
+
+  // 啟動時自動修正 LocalStorage 中被錯誤登錄為 5/26 的歷史股價 (因為 5/26 尚未收盤)
+  useEffect(() => {
+    const now = new Date();
+    // 台灣時間 UTC+8
+    const twTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    const hour = twTime.getUTCHours();
+    const todayStr = twTime.toISOString().split('T')[0];
+    
+    // 如果今天是 5/26 且尚未收盤 (下午兩點前)
+    if (todayStr === '2026-05-26' && hour < 14) {
+      setWeeklyPrices(prev => {
+        let changed = false;
+        const next = prev.map(wp => {
+          if (wp.date === '2026-05-26') {
+            changed = true;
+            return { ...wp, date: '2026-05-25' };
+          }
+          return wp;
+        });
+        
+        if (changed) {
+          // 合併重複的 5/25 紀錄並排序
+          const unique = [];
+          const seen = new Set();
+          next.forEach(wp => {
+            const key = `${wp.date}-${wp.ticker}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(wp);
+            }
+          });
+          console.log('[資料修正] 已自動將錯誤的 2026-05-26 歷史紀錄修正並合併至 2026-05-25');
+          return unique.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        return prev;
+      });
+    }
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const weeklyFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -806,8 +990,190 @@ export default function App() {
     }, 50);
   };
 
-  const handleUpdateMarket = () => {
-    alert('自動更新市價功能已停用，請透過下方「每週收盤價登錄」功能手動匯入 CSV 或新增紀錄。');
+  const handleUpdateMarket = async () => {
+    console.log('[手動更新] 開始手動一鍵更新最新收盤價...');
+    
+    // 取得所有有持股的台股代號
+    const tickers = new Set();
+    transactions.forEach(tx => {
+      if (!tx.ticker) return;
+      const ticker = tx.ticker.trim().toUpperCase();
+      if (!['現金', 'CASH', 'TWD', 'USD'].includes(ticker)) {
+        tickers.add(ticker);
+      }
+    });
+    const heldTickers = Array.from(tickers) as string[];
+
+    try {
+      // 1. 如果在本地開發環境 (localhost)，先叫後端去爬官方最新價格寫入檔案
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocal) {
+        try {
+          console.log('[手動更新] 偵測到本地環境，正在觸發後端 API 刷新股價...');
+          const refreshRes = await fetch('/api/refresh', { method: 'POST' });
+          if (refreshRes.ok) {
+            console.log('[手動更新] 後端股價刷新成功！');
+          }
+        } catch (err: any) {
+          console.warn('[手動更新] 呼叫後端刷新 API 失敗，將直接讀取現有檔案:', err.message);
+        }
+      }
+
+      // 2. 從後端/靜態檔同步一次最新價格 (包含美股與大盤)
+      const timestamp = Date.now();
+      let url = `./stock_prices.json?t=${timestamp}`;
+      if (window.location.hostname.includes('github.io')) {
+        const repoName = window.location.pathname.split('/')[1] || 'Z-Test';
+        url = `https://raw.githubusercontent.com/qazs792589-lang/${repoName}/main/stock_prices.json?t=${timestamp}`;
+      } else {
+        url = `https://raw.githubusercontent.com/qazs792589-lang/Z-Test/main/stock_prices.json?t=${timestamp}`;
+      }
+      console.log(`[手動更新] 正在從網址獲取最新價格: ${url}`);
+      const res = await fetch(url, { cache: 'no-store' });
+      let serverPrices: Record<string, number> = {};
+      let serverDates: Record<string, string> = {};
+      let serverUpdated: string | null = null;
+      if (res.ok) {
+        const serverData = await res.json();
+        serverPrices = serverData.prices || {};
+        serverDates = serverData.dates || {};
+        serverUpdated = serverData.updated || null;
+      }
+
+      // 3. 跨網域直接呼叫台灣證交所與櫃買中心 API (當作 GitHub Pages 的前端直連備援)
+      const pricesMap: Record<string, number> = {};
+      try {
+        const twseRes = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
+        if (twseRes.ok) {
+          const data = await twseRes.json();
+          data.forEach((item: any) => {
+            const code = item.Code ? item.Code.trim() : '';
+            const price = parseFloat(item.ClosingPrice);
+            if (code && !isNaN(price)) pricesMap[code] = price;
+          });
+        }
+      } catch (err: any) {
+        console.warn('[手動更新] 瀏覽器前端直連 TWSE 失敗 (可能受 CORS 限制，此為正常現象，已使用伺服器快取):', err.message);
+      }
+
+      try {
+        const tpexRes = await fetch('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes');
+        if (tpexRes.ok) {
+          const data = await tpexRes.json();
+          data.forEach((item: any) => {
+            const code = item.SecuritiesCompanyCode ? item.SecuritiesCompanyCode.trim() : '';
+            const price = parseFloat(item.Close);
+            if (code && !isNaN(price)) pricesMap[code] = price;
+          });
+        }
+      } catch (err: any) {
+        console.warn('[手動更新] 瀏覽器前端直連 TPEx 失敗 (可能受 CORS 限制，此為正常現象，已使用伺服器快取):', err.message);
+      }
+
+      // 4. 計算目前最新台灣交易日日期
+      const now = new Date();
+      const twTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+      const hour = twTime.getUTCHours();
+      let tradingDate = new Date(twTime.getTime());
+      if (hour < 14) tradingDate.setDate(tradingDate.getDate() - 1);
+      const dayOfWeek = tradingDate.getDay();
+      if (dayOfWeek === 6) tradingDate.setDate(tradingDate.getDate() - 1);
+      else if (dayOfWeek === 0) tradingDate.setDate(tradingDate.getDate() - 2);
+      const twDateStr = tradingDate.toISOString().split('T')[0];
+
+      // 5. 合併直接抓到的台股價格與伺服器價格
+      const mergedPrices = { ...serverPrices };
+      const mergedDates = { ...serverDates };
+      
+      heldTickers.forEach(ticker => {
+        // 如果是台股且前端直接呼叫成功，則用前端的覆蓋
+        if (/^\d+[A-Z]?$/.test(ticker) && pricesMap[ticker] !== undefined) {
+          mergedPrices[ticker] = pricesMap[ticker];
+          mergedDates[ticker] = twDateStr;
+        }
+      });
+
+      // 比對有多少檔股票的現價與本地 LocalStorage 內的不同
+      let updateCount = 0;
+      heldTickers.forEach(ticker => {
+        const newPrice = mergedPrices[ticker];
+        const oldPrice = marketData.prices[ticker];
+        if (newPrice !== undefined && newPrice !== oldPrice) {
+          updateCount++;
+        }
+      });
+
+      // 6. 更新現價狀態
+      setMarketData({
+        updated: serverUpdated || new Date().toISOString(),
+        prices: mergedPrices
+      });
+
+      // 7. 自動補登與更新歷史收盤價中 (weeklyPrices)
+      let autoLogCount = 0;
+      setWeeklyPrices(prev => {
+        let hasChanges = false;
+        
+        // 1. 先更新已存在的日期之價格 (如果不同)
+        const updatedList = prev.map(wp => {
+          const price = mergedPrices[wp.ticker];
+          const date = mergedDates[wp.ticker] || twDateStr;
+          if (price !== undefined && wp.date === date) {
+            const numericPrice = Number(price);
+            if (!isNaN(numericPrice) && wp.price !== numericPrice) {
+              console.log(`[手動更新] 更新 ${wp.ticker} 在 ${wp.date} 的價格: ${wp.price} -> ${numericPrice}`);
+              hasChanges = true;
+              autoLogCount++;
+              return { ...wp, price: numericPrice };
+            }
+          }
+          return wp;
+        });
+        
+        // 2. 再補登不存在的價格
+        heldTickers.forEach(ticker => {
+          const price = mergedPrices[ticker];
+          const date = mergedDates[ticker] || twDateStr;
+          if (price === undefined || isNaN(price)) return;
+          
+          const exists = updatedList.some(wp => wp.ticker === ticker && wp.date === date);
+          if (!exists) {
+            updatedList.push({ date, ticker, price: Number(price) });
+            hasChanges = true;
+            autoLogCount++;
+          }
+        });
+
+        // 永遠補登大盤
+        if (mergedPrices['^TWII']) {
+          const date = mergedDates['^TWII'] || twDateStr;
+          const exists = updatedList.some(wp => wp.ticker === '^TWII' && wp.date === date);
+          if (!exists) {
+            updatedList.push({ date, ticker: '^TWII', price: Number(mergedPrices['^TWII']) });
+            hasChanges = true;
+            autoLogCount++;
+          }
+        }
+
+        if (hasChanges) {
+          return updatedList.sort((a, b) => {
+            const dateCompare = a.date.localeCompare(b.date);
+            if (dateCompare !== 0) return dateCompare;
+            return a.ticker.localeCompare(b.ticker);
+          });
+        }
+        return prev;
+      });
+
+      if (updateCount > 0 || autoLogCount > 0) {
+        alert(`一鍵更新完成！成功更新了 ${updateCount} 檔股票的最新現價，並自動補登了 ${autoLogCount} 筆歷史收盤價！`);
+      } else {
+        alert('股價與歷史紀錄已是最新狀態，無需重複更新！');
+      }
+    } catch (e: any) {
+      console.error('[手動更新] 發生錯誤:', e);
+      alert('手動更新失敗: ' + e.message);
+    }
   };
 
   const handleToggleUncleared = (txId: string) => {
@@ -843,7 +1209,7 @@ export default function App() {
             title="點擊圖示切換主題風格"
           >
             <img
-              src="/Z-Money-/logo.png"
+              src="/Z-Test/logo.png"
               alt="Z-Ledger Logo"
               className={cn(
                 "h-10 md:h-12 object-contain rounded-md transition-all duration-300",
@@ -1140,17 +1506,25 @@ export default function App() {
                         <h4 className="text-lg font-black text-[var(--text-main)] leading-tight">投資組合明細</h4>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setIsEditingTickers(!isEditingTickers)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
-                        isEditingTickers
-                          ? "bg-[var(--success)] text-white border-[var(--success)]"
-                          : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:text-[var(--text-main)]"
-                      )}
-                    >
-                      {isEditingTickers ? <><Check size={12} /> 完成排序</> : <><Palette size={12} /> 編輯順序</>}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleUpdateMarket}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:text-[var(--text-main)] hover:border-[var(--accent)] flex items-center gap-2"
+                      >
+                        <TrendingUp size={12} /> 一鍵更新
+                      </button>
+                      <button
+                        onClick={() => setIsEditingTickers(!isEditingTickers)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
+                          isEditingTickers
+                            ? "bg-[var(--success)] text-white border-[var(--success)]"
+                            : "bg-[var(--bg-secondary)] text-[var(--text-dim)] border-[var(--border)] hover:text-[var(--text-main)]"
+                        )}
+                      >
+                        {isEditingTickers ? <><Check size={12} /> 完成排序</> : <><Palette size={12} /> 編輯順序</>}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Modern Ticker Navigation */}
@@ -1270,7 +1644,7 @@ export default function App() {
 
                             <div className="bg-[var(--bg-tertiary)] p-3 md:p-6 border-b border-[var(--border)] space-y-4">
                               <div className="flex items-center justify-between">
-                                <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">每週收盤價登錄</span>
+                                <span className="text-[9px] font-black tracking-[0.2em] text-[var(--text-dim)] uppercase">收盤價登錄</span>
                                 <div className="flex gap-2">
                                   <input
                                     type="file"
@@ -1364,7 +1738,7 @@ export default function App() {
                                             className="text-[var(--accent)] hover:underline flex items-center gap-1 text-[10px] opacity-60 hover:opacity-100"
                                             onClick={() => {
                                               setFormData({ ...formData, date: wp.date, unitPrice: wp.price });
-                                              const entryHeader = Array.from(document.querySelectorAll('span')).find(el => el.textContent === '每週收盤價登錄');
+                                              const entryHeader = Array.from(document.querySelectorAll('span')).find(el => el.textContent === '收盤價登錄');
                                               entryHeader?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                             }}
                                           >
