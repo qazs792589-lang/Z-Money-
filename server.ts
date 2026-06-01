@@ -4,44 +4,38 @@ import fs from "fs";
 import path from "path";
 import yahooFinance from 'yahoo-finance2';
 import dotenv from 'dotenv';
+import { exec } from "child_process";
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  app.use(express.json({ limit: "10mb" }));
+  const PORT = 3001;
   const DATA_FILE = path.join(process.cwd(), "stock_prices.json");
 
   // Initial prices placeholder
   if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ updated: null, prices: {} }));
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ updated: null, prices: {}, dates: {} }));
   }
 
-  // Fetch from TWSE
+  // Fetch via running the github update script
   async function refreshPrices() {
-    console.log("Refreshing stock prices from TWSE...");
-    try {
-      const response = await fetch("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL");
-      if (!response.ok) throw new Error("Failed to fetch from TWSE");
-      const data = await response.json();
-      
-      const newPrices: Record<string, number> = {};
-      data.forEach((item: any) => {
-        // ClosingPrice is index 10 or 7 depending on the API version, usually "ClosingPrice" field in JSON
-        const price = parseFloat(item.ClosingPrice);
-        if (!isNaN(price)) {
-          newPrices[item.Code] = price;
+    console.log("Refreshing stock prices using update_prices_github.js...");
+    return new Promise<void>((resolve, reject) => {
+      exec("node scripts/update_prices_github.js", (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error running update script: ${error.message}`);
+          reject(error);
+          return;
         }
+        console.log(`Update script output:\n${stdout}`);
+        if (stderr) {
+          console.warn(`Update script stderr:\n${stderr}`);
+        }
+        resolve();
       });
-
-      fs.writeFileSync(DATA_FILE, JSON.stringify({ 
-        updated: new Date().toISOString(), 
-        prices: newPrices 
-      }));
-      console.log("Successfully updated prices for", Object.keys(newPrices).length, "stocks.");
-    } catch (error) {
-      console.error("Error refreshing prices:", error);
-    }
+    });
   }
 
   // API Routes
@@ -56,6 +50,30 @@ async function startServer() {
   app.post("/api/refresh", async (req, res) => {
     await refreshPrices();
     res.json({ success: true });
+  });
+
+  app.post("/api/save-backup", (req, res) => {
+    try {
+      const backupData = req.body;
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `Z-Money-FullBackup-${dateStr}.json`;
+      const filePath = path.join(process.cwd(), filename);
+
+      // 刪除舊的備份檔案以保持乾淨
+      const files = fs.readdirSync(process.cwd());
+      files.forEach(f => {
+        if (f.startsWith('Z-Money-FullBackup-') && f.endsWith('.json')) {
+          fs.unlinkSync(path.join(process.cwd(), f));
+        }
+      });
+
+      fs.writeFileSync(filePath, JSON.stringify(backupData, null, 2));
+      console.log(`[自動備份] 成功寫入備份檔: ${filename}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[自動備份] 寫入失敗:", error.message);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/chart/:ticker", async (req, res) => {
