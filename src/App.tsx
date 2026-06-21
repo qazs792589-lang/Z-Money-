@@ -811,9 +811,9 @@ export default function App() {
       const currentTxs = transactions.filter(t => t.date === d.name);
       let cashFlow = 0;
       currentTxs.forEach(t => {
-        if (t.direction === 'BUY') cashFlow += t.totalAmount;
-        if (t.direction === 'SELL') cashFlow -= t.totalAmount;
-        if (t.direction === 'DIVIDEND') cashFlow -= t.totalAmount;
+        if (t.direction === 'BUY') cashFlow += Math.abs(t.totalAmount);
+        if (t.direction === 'SELL') cashFlow -= Math.abs(t.totalAmount);
+        if (t.direction === 'DIVIDEND') cashFlow -= Math.abs(t.totalAmount);
       });
 
       // Linear Interpolation for Market Price to avoid step-like appearance
