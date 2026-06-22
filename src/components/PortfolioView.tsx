@@ -71,7 +71,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     days: number;
     bars: number;
     portfolioChange: number;
+    portfolioAbsChange: number;
     benchChanges: Record<string, number>;
+    benchAbsChanges: Record<string, number>;
   } | null>(null);
 
   const [isMobile, setIsMobile] = useState(false);
@@ -83,7 +85,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   }, []);
 
   const handleMeasurementEnd = () => {
-    if (viewMode === 'ratio' && refAreaLeft && refAreaRight && refAreaLeft !== refAreaRight) {
+    if (refAreaLeft && refAreaRight && refAreaLeft !== refAreaRight) {
       const [start, end] = refAreaLeft.localeCompare(refAreaRight) <= 0 
         ? [refAreaLeft, refAreaRight] 
         : [refAreaRight, refAreaLeft];
@@ -93,15 +95,21 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         const startPt = rangeData[0];
         const endPt = rangeData[rangeData.length - 1];
         
-        // Portfolio ROI Change
+        // Portfolio ROI Change (Ratio)
         const startPVal = 100 + (startPt.portfolioRoi || 0);
         const endPVal = 100 + (endPt.portfolioRoi || 0);
         const portfolioChange = ((endPVal / startPVal) - 1) * 100;
+
+        // Portfolio Absolute Value Change (TWR adjusted absolute change)
+        const portfolioAbsChange = (endPt.adjustedValue || 0) - (startPt.adjustedValue || 0);
         
         const benchChanges: Record<string, number> = {};
+        const benchAbsChanges: Record<string, number> = {};
+
         const startM = 100 + (startPt.marketRoi || 0);
         const endM = 100 + (endPt.marketRoi || 0);
         benchChanges['台股大盤'] = ((endM / startM) - 1) * 100;
+        benchAbsChanges['台股大盤'] = (endPt.marketPrice || 0) - (startPt.marketPrice || 0);
         
         const t1 = new Date(start).getTime();
         const t2 = new Date(end).getTime();
@@ -113,7 +121,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           days,
           bars: rangeData.length,
           portfolioChange,
-          benchChanges
+          portfolioAbsChange,
+          benchChanges,
+          benchAbsChanges
         });
       } else {
         setRefAreaLeft(null);
@@ -440,7 +450,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                               </div>
                               <div className="space-y-2">
                                 {[
-                                  { label: '市值', value: originalPoint.value, color: 'var(--accent)' },
+                                  { 
+                                    label: viewMode === 'absolute' ? '資產淨值' : '市值', 
+                                    value: viewMode === 'absolute' ? originalPoint.adjustedValue : originalPoint.value, 
+                                    color: 'var(--accent)' 
+                                  },
                                   { label: '成本', value: originalPoint.cost, color: 'var(--danger)' }
                                 ].sort((a, b) => b.value - a.value).map((item, idx) => (
                                   <div key={idx} className="flex items-center justify-between gap-10">
@@ -580,6 +594,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </div>
             </div>
 
+            <div className="elegant-card p-0 overflow-hidden border-[var(--border)] bg-opacity-40 backdrop-blur-md shadow-2xl relative">
               <div className="p-4 md:p-6 pb-2 flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -617,33 +632,33 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </div>
               </div>
               
-              <div className="h-[320px] md:h-[420px] relative px-1 md:px-2 pb-4" style={{ touchAction: viewMode === 'ratio' ? 'pan-y' : 'auto' }}>
+              <div className="h-[320px] md:h-[420px] relative px-1 md:px-2 pb-4" style={{ touchAction: 'pan-y' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart 
                     data={chartData} 
                     margin={{ top: 30, right: 10, left: 15, bottom: 20 }}
                     onMouseDown={(e: any) => {
-                      if (viewMode === 'ratio' && e && e.activeLabel) {
+                      if (e && e.activeLabel) {
                         setRefAreaLeft(e.activeLabel);
                         setRefAreaRight(e.activeLabel);
                         setMeasurementData(null);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (viewMode === 'ratio' && refAreaLeft && e && e.activeLabel) {
+                      if (refAreaLeft && e && e.activeLabel) {
                         setRefAreaRight(e.activeLabel);
                       }
                     }}
                     onMouseUp={handleMeasurementEnd}
                     onTouchStart={(e: any) => {
-                      if (viewMode === 'ratio' && e && e.activeLabel) {
+                      if (e && e.activeLabel) {
                         setRefAreaLeft(e.activeLabel);
                         setRefAreaRight(e.activeLabel);
                         setMeasurementData(null);
                       }
                     }}
                     onTouchMove={(e: any) => {
-                      if (viewMode === 'ratio' && refAreaLeft && e && e.activeLabel) {
+                      if (refAreaLeft && e && e.activeLabel) {
                         setRefAreaRight(e.activeLabel);
                       }
                     }}
@@ -767,7 +782,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       yAxisId="left"
                       type="monotone" 
                       name={viewMode === 'ratio' ? "個人帳戶" : "資產金額"} 
-                      dataKey={viewMode === 'ratio' ? "portfolioRoi" : "value"} 
+                      dataKey={viewMode === 'ratio' ? "portfolioRoi" : "adjustedValue"} 
                       stroke="var(--accent)" 
                       strokeWidth={4} 
                       dot={false} 
@@ -787,18 +802,16 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       opacity={0.6}
                       animationDuration={1500}
                     />
-                    {viewMode === 'ratio' && refAreaLeft && refAreaRight && (
-                      React.createElement(ReferenceArea as any, {
-                        yAxisId: "left",
+                    {refAreaLeft && refAreaRight && React.createElement(ReferenceArea as any, {
+                        yAxisId: 'left',
                         x1: refAreaLeft,
                         x2: refAreaRight,
-                        stroke: "#3b82f6",
+                        stroke: '#3b82f6',
                         strokeWidth: 1.5,
-                        strokeDasharray: "4 4",
-                        fill: "#3b82f6",
+                        strokeDasharray: '4 4',
+                        fill: '#3b82f6',
                         fillOpacity: 0.12
-                      })
-                    )}
+                      })}
                   </ComposedChart>
                 </ResponsiveContainer>
 
@@ -832,32 +845,54 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       {/* 左邊：個人績效 */}
                       <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-[var(--bg-tertiary)]/40 border border-[var(--border)]/30">
                         <span className="text-[8px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">個人帳戶</span>
-                        <div className="flex items-center gap-0.5">
-                          <TrendingUp size={12} className={measurementData.portfolioChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"} />
-                          <span className={cn("font-mono font-black text-sm md:text-base", measurementData.portfolioChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
-                            {measurementData.portfolioChange >= 0 ? '+' : ''}{measurementData.portfolioChange.toFixed(2)}%
-                          </span>
+                        <div className="flex items-center gap-0.5 whitespace-nowrap">
+                          {viewMode === 'ratio' ? (
+                            <>
+                              <TrendingUp size={12} className={measurementData.portfolioChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"} />
+                              <span className={cn("font-mono font-black text-[13px] md:text-base whitespace-nowrap", measurementData.portfolioChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                                {measurementData.portfolioChange >= 0 ? '+' : ''}{measurementData.portfolioChange.toFixed(2)}%
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <TrendingUp size={12} className={measurementData.portfolioAbsChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"} />
+                              <span className={cn("font-mono font-black text-[13px] md:text-base whitespace-nowrap", measurementData.portfolioAbsChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                                {measurementData.portfolioAbsChange >= 0 ? '+' : '-'}${Math.abs(measurementData.portfolioAbsChange).toLocaleString()}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
 
                       {/* 右邊：基準大盤 */}
                       <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-[var(--bg-tertiary)]/40 border border-[var(--border)]/30">
-                        <span className="text-[8px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">對比基準</span>
-                        <div className="flex flex-col gap-0.5 justify-center items-center w-full">
-                          {(Object.entries(measurementData.benchChanges) as [string, number][]).map(([name, val]) => (
-                            <div key={name} className="flex items-center gap-1 font-mono">
-                              <span className="text-[9px] font-bold text-[var(--text-dim)]">{name}</span>
-                              <span className={cn("text-[10px] font-black", val >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
-                                {val >= 0 ? '+' : ''}{val.toFixed(1)}%
-                              </span>
-                            </div>
-                          ))}
+                        <span className="text-[8px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">台股大盤</span>
+                        <div className="flex items-center gap-0.5 whitespace-nowrap">
+                          {(() => {
+                            const twChange = measurementData.benchChanges['台股大盤'] || 0;
+                            const twChangeAbs = measurementData.benchAbsChanges['台股大盤'] || 0;
+                            return viewMode === 'ratio' ? (
+                              <>
+                                <TrendingUp size={12} className={twChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"} />
+                                <span className={cn("font-mono font-black text-[13px] md:text-base whitespace-nowrap", twChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                                  {twChange >= 0 ? '+' : ''}{twChange.toFixed(2)}%
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp size={12} className={twChangeAbs >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"} />
+                                <span className={cn("font-mono font-black text-[13px] md:text-base whitespace-nowrap", twChangeAbs >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                                  {twChangeAbs >= 0 ? '+' : ''}{twChangeAbs.toFixed(2)} 點
+                                </span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
 
                     {/* 超額收益 Alpha 計算顯示 */}
-                    {(Object.entries(measurementData.benchChanges) as [string, number][]).length === 1 && (
+                    {viewMode === 'ratio' && (Object.entries(measurementData.benchChanges) as [string, number][]).length === 1 && (
                       <div className="mt-3 pt-2.5 border-t border-[var(--border)]/60 flex items-center justify-between text-[10px]">
                         <span className="font-black text-[var(--text-dim)] uppercase tracking-wider">超額收益 (Alpha)</span>
                         {(() => {
@@ -874,6 +909,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   </div>
                 )}
               </div>
+            </div>
 
             {/* Market Data Entry Section */}
             <div id="market-bench-input" className="elegant-card bg-opacity-40 backdrop-blur-md">
