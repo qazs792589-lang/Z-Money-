@@ -4,7 +4,14 @@ import { isTxRealized } from '../lib/txUtils';
 
 export const usePortfolioCalculations = (transactions: Transaction[], marketData: { updated: string | null; prices: Record<string, number> }, weeklyPrices: WeeklyPrice[]) => {
   const appData = useMemo(() => {
-    const holdings: Record<string, Holding & { totalBuyFees: number, firstBuyDate?: string }> = {};
+    const holdings: Record<string, Holding & { 
+      totalBuyFees: number; 
+      firstBuyDate?: string;
+      unrealizedDividends: number;
+      _mathShares: number;
+      _mathCost: number;
+      _mathFees: number;
+    }> = {};
     const realizedList: RealizedProfit[] = [];
     const stockGroups: Record<string, Transaction[]> = {};
 

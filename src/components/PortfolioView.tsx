@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { LayoutDashboard, Activity, Edit2, TrendingUp, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Layers, Trash2 } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { LayoutDashboard, Activity, Edit2, TrendingUp, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Layers, Trash2, Calendar, X } from 'lucide-react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -12,7 +12,8 @@ import {
   PieChart,
   Pie,
   Cell,
-  Label
+  Label,
+  ReferenceArea
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -60,6 +61,70 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   const [viewMode, setViewMode] = useState<'ratio' | 'absolute'>('ratio');
   const [mDate, setMDate] = useState(new Date().toISOString().split('T')[0]);
   const [mPrice, setMPrice] = useState('');
+
+  // 績效測量工具相關 States
+  const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null);
+  const [refAreaRight, setRefAreaRight] = useState<string | null>(null);
+  const [measurementData, setMeasurementData] = useState<{
+    startDate: string;
+    endDate: string;
+    days: number;
+    bars: number;
+    portfolioChange: number;
+    benchChanges: Record<string, number>;
+  } | null>(null);
+
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleMeasurementEnd = () => {
+    if (viewMode === 'ratio' && refAreaLeft && refAreaRight && refAreaLeft !== refAreaRight) {
+      const [start, end] = refAreaLeft.localeCompare(refAreaRight) <= 0 
+        ? [refAreaLeft, refAreaRight] 
+        : [refAreaRight, refAreaLeft];
+      
+      const rangeData = chartData.filter(d => d.name >= start && d.name <= end);
+      if (rangeData.length >= 2) {
+        const startPt = rangeData[0];
+        const endPt = rangeData[rangeData.length - 1];
+        
+        // Portfolio ROI Change
+        const startPVal = 100 + (startPt.portfolioRoi || 0);
+        const endPVal = 100 + (endPt.portfolioRoi || 0);
+        const portfolioChange = ((endPVal / startPVal) - 1) * 100;
+        
+        const benchChanges: Record<string, number> = {};
+        const startM = 100 + (startPt.marketRoi || 0);
+        const endM = 100 + (endPt.marketRoi || 0);
+        benchChanges['台股大盤'] = ((endM / startM) - 1) * 100;
+        
+        const t1 = new Date(start).getTime();
+        const t2 = new Date(end).getTime();
+        const days = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+        
+        setMeasurementData({
+          startDate: start,
+          endDate: end,
+          days,
+          bars: rangeData.length,
+          portfolioChange,
+          benchChanges
+        });
+      } else {
+        setRefAreaLeft(null);
+        setRefAreaRight(null);
+      }
+    } else {
+      setRefAreaLeft(null);
+      setRefAreaRight(null);
+      setMeasurementData(null);
+    }
+  };
 
   const allTickers = useMemo(() => {
     // Get all tickers that have ever appeared in chartData
@@ -552,9 +617,38 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </div>
               </div>
               
-              <div className="h-[320px] md:h-[420px] relative px-1 md:px-2 pb-4">
+              <div className="h-[320px] md:h-[420px] relative px-1 md:px-2 pb-4" style={{ touchAction: viewMode === 'ratio' ? 'pan-y' : 'auto' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 30, right: 10, left: 15, bottom: 20 }}>
+                  <ComposedChart 
+                    data={chartData} 
+                    margin={{ top: 30, right: 10, left: 15, bottom: 20 }}
+                    onMouseDown={(e: any) => {
+                      if (viewMode === 'ratio' && e && e.activeLabel) {
+                        setRefAreaLeft(e.activeLabel);
+                        setRefAreaRight(e.activeLabel);
+                        setMeasurementData(null);
+                      }
+                    }}
+                    onMouseMove={(e: any) => {
+                      if (viewMode === 'ratio' && refAreaLeft && e && e.activeLabel) {
+                        setRefAreaRight(e.activeLabel);
+                      }
+                    }}
+                    onMouseUp={handleMeasurementEnd}
+                    onTouchStart={(e: any) => {
+                      if (viewMode === 'ratio' && e && e.activeLabel) {
+                        setRefAreaLeft(e.activeLabel);
+                        setRefAreaRight(e.activeLabel);
+                        setMeasurementData(null);
+                      }
+                    }}
+                    onTouchMove={(e: any) => {
+                      if (viewMode === 'ratio' && refAreaLeft && e && e.activeLabel) {
+                        setRefAreaRight(e.activeLabel);
+                      }
+                    }}
+                    onTouchEnd={handleMeasurementEnd}
+                  >
                     <defs>
                       <linearGradient id="colorRoi" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
@@ -608,35 +702,44 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     )}
                     <Tooltip
                       cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
+                      position={isMobile ? { x: 10, y: 10 } : undefined}
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl border-opacity-50">
+                            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-2.5 md:p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl border-opacity-50 max-w-[230px] md:max-w-none">
                               <div className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] pb-2.5 mb-3 flex items-center justify-between gap-8">
                                 <span>{label?.toString().replace(/-/g, '/')}</span>
                                 <span className="opacity-40 font-mono text-[8px]">SNAPSHOT</span>
                               </div>
-                              <div className="space-y-3">
+                              <div className={cn("space-y-3", isMobile && "space-y-1.5")}>
                                 {payload.map((item: any, idx: number) => (
-                                  <div key={idx} className="flex items-center justify-between gap-12">
+                                  <div key={idx} className={cn("flex items-center justify-between gap-12", isMobile && "gap-6")}>
                                     <div className="flex items-center gap-2.5">
-                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color || '#888' }} />
                                       <span className="text-[11px] font-bold text-[var(--text-main)]">{item.name}</span>
                                     </div>
                                     <span className={cn("text-xs font-mono font-black", (item.value || 0) >= 0 ? "text-[var(--text-main)]" : "text-[var(--danger)]")}>
                                       {viewMode === 'ratio' 
                                         ? `${(item.value || 0) >= 0 ? '+' : ''}${(item.value || 0).toFixed(2)}%`
-                                        : `${item.name.includes('大盤') ? '' : '$'}${Number(item.value).toLocaleString()}`
+                                        : `${item.name.includes('大盤') || item.name.includes('指數') ? '' : '$'}${Number(item.value).toLocaleString()}`
                                       }
                                     </span>
                                   </div>
                                 ))}
                                 {viewMode === 'ratio' && payload.length >= 2 && (
-                                  <div className="flex items-center justify-between gap-12 border-t border-[var(--border)] pt-3 mt-1">
-                                    <span className="text-[10px] font-black text-[var(--text-dim)] uppercase tracking-tighter">超額收益 (Alpha)</span>
-                                    <span className={cn("text-xs font-mono font-black", (payload[0].value - payload[1].value) >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
-                                      {(payload[0].value - payload[1].value) >= 0 ? '+' : ''}{(payload[0].value - payload[1].value).toFixed(2)}%
-                                    </span>
+                                  <div className={cn("border-t border-[var(--border)] pt-3 mt-1 space-y-1.5", isMobile && "pt-2 mt-1 space-y-1")}>
+                                    <span className="text-[10px] font-black text-[var(--text-dim)] uppercase tracking-widest block mb-1.5">超額收益 (Alpha)</span>
+                                    {payload.slice(1).map((item: any, idx: number) => {
+                                      const alpha = (payload[0].value || 0) - (item.value || 0);
+                                      return (
+                                        <div key={idx} className={cn("flex items-center justify-between gap-12", isMobile && "gap-6")}>
+                                          <span className="text-[10px] font-bold text-[var(--text-dim)]">vs {item.name}</span>
+                                          <span className={cn("text-xs font-mono font-black", alpha >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                                            {alpha >= 0 ? '+' : ''}{alpha.toFixed(2)}%
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -684,8 +787,92 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       opacity={0.6}
                       animationDuration={1500}
                     />
+                    {viewMode === 'ratio' && refAreaLeft && refAreaRight && (
+                      React.createElement(ReferenceArea as any, {
+                        yAxisId: "left",
+                        x1: refAreaLeft,
+                        x2: refAreaRight,
+                        stroke: "#3b82f6",
+                        strokeWidth: 1.5,
+                        strokeDasharray: "4 4",
+                        fill: "#3b82f6",
+                        fillOpacity: 0.12
+                      })
+                    )}
                   </ComposedChart>
                 </ResponsiveContainer>
+
+                {/* 績效測量工具懸浮卡片 */}
+                {measurementData && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-[var(--bg-secondary)]/95 border border-[var(--border)] text-[var(--text-main)] px-4 py-3.5 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200 min-w-[280px] max-w-[320px]">
+                    {/* 關閉按鈕 */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRefAreaLeft(null);
+                        setRefAreaRight(null);
+                        setMeasurementData(null);
+                      }}
+                      className="absolute top-2 right-2 p-1 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--border)] text-[var(--text-dim)] hover:text-[var(--danger)] transition-all cursor-pointer active:scale-90"
+                    >
+                      <X size={12} />
+                    </button>
+
+                    {/* 頂部日期與範圍資訊 */}
+                    <div className="flex items-center gap-1.5 text-[9px] text-[var(--text-dim)] font-black uppercase tracking-wider mb-3 border-b border-[var(--border)] pb-2 pr-6">
+                      <Calendar size={10} className="text-[var(--accent)]" />
+                      <span>
+                        {measurementData.startDate.replace(/-/g, '/')} ~ {measurementData.endDate.replace(/-/g, '/')}
+                      </span>
+                      <span className="opacity-40 font-mono">({measurementData.days}天)</span>
+                    </div>
+
+                    {/* 績效數據網格對比 */}
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      {/* 左邊：個人績效 */}
+                      <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-[var(--bg-tertiary)]/40 border border-[var(--border)]/30">
+                        <span className="text-[8px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">個人帳戶</span>
+                        <div className="flex items-center gap-0.5">
+                          <TrendingUp size={12} className={measurementData.portfolioChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]"} />
+                          <span className={cn("font-mono font-black text-sm md:text-base", measurementData.portfolioChange >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                            {measurementData.portfolioChange >= 0 ? '+' : ''}{measurementData.portfolioChange.toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 右邊：基準大盤 */}
+                      <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-[var(--bg-tertiary)]/40 border border-[var(--border)]/30">
+                        <span className="text-[8px] text-[var(--text-dim)] font-black uppercase tracking-widest mb-1">對比基準</span>
+                        <div className="flex flex-col gap-0.5 justify-center items-center w-full">
+                          {(Object.entries(measurementData.benchChanges) as [string, number][]).map(([name, val]) => (
+                            <div key={name} className="flex items-center gap-1 font-mono">
+                              <span className="text-[9px] font-bold text-[var(--text-dim)]">{name}</span>
+                              <span className={cn("text-[10px] font-black", val >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                                {val >= 0 ? '+' : ''}{val.toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 超額收益 Alpha 計算顯示 */}
+                    {(Object.entries(measurementData.benchChanges) as [string, number][]).length === 1 && (
+                      <div className="mt-3 pt-2.5 border-t border-[var(--border)]/60 flex items-center justify-between text-[10px]">
+                        <span className="font-black text-[var(--text-dim)] uppercase tracking-wider">超額收益 (Alpha)</span>
+                        {(() => {
+                          const firstBench = (Object.entries(measurementData.benchChanges) as [string, number][])[0];
+                          const alpha = measurementData.portfolioChange - firstBench[1];
+                          return (
+                            <span className={cn("font-mono font-black", alpha >= 0 ? "text-[var(--accent)]" : "text-[var(--danger)]")}>
+                              {alpha >= 0 ? '+' : ''}{alpha.toFixed(2)}%
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
             {/* Market Data Entry Section */}

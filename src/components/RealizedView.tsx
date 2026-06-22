@@ -73,7 +73,10 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       cumulativeProfit: number;
       cumulativeCost: number;
       cumulativeRevenue: number;
+      cumulativeShares: number;
+      realizedCount: number;
       isHolding: boolean;
+      lastOpDate: string;
     }> = {};
 
     Object.entries(appData.stockGroups).forEach(([ticker, txs]: [string, any]) => {
@@ -149,7 +152,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       const sorted = [...netWorthEntries].sort((a, b) => b.date.localeCompare(a.date));
       const latest = sorted[0];
       if (latest.assets) {
-        Object.entries(latest.assets).forEach(([name, val]) => {
+        (Object.entries(latest.assets) as [string, number][]).forEach(([name, val]) => {
           if (val > 0) categories[name] = (categories[name] || 0) + val;
         });
       }
@@ -170,7 +173,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       
       let otherAssetsTotal = 0;
       if (entry.assets) {
-        Object.values(entry.assets).forEach(v => otherAssetsTotal += (v || 0));
+        (Object.values(entry.assets) as number[]).forEach(v => otherAssetsTotal += (v || 0));
       } else {
         // Fallback for old data format
         otherAssetsTotal = ((entry as any).cash || 0) + ((entry as any).crypto || 0);
@@ -230,7 +233,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                 activeTab === 'details' ? "bg-[var(--accent)] text-[var(--bg-primary)] shadow-lg" : "text-[var(--text-dim)]"
               )}
             >
-              <PieChart size={14} /> 損益細節
+              <PieChartIcon size={14} /> 損益細節
             </button>
             <button 
               onClick={() => setActiveTab('networth')}
@@ -633,7 +636,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
               <button 
                 onClick={() => {
                   const assets: Record<string, number> = {};
-                  Object.entries(newAssetValues).forEach(([k, v]) => {
+                  (Object.entries(newAssetValues) as [string, string][]).forEach(([k, v]) => {
                     assets[k] = parseFloat(v) || 0;
                   });
                   

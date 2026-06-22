@@ -519,7 +519,7 @@ export default function App() {
               id: Math.random().toString(36).substr(2, 9),
               date, ticker, name: ticker,
               direction: 'DIVIDEND', quantity: 1, unitPrice: dividend,
-              category: 'Stock', fee: 0, tax: 0, totalAmount: dividend,
+              category: 'General', fee: 0, tax: 0, totalAmount: dividend,
               notes
             });
           }
@@ -533,7 +533,7 @@ export default function App() {
               id: Math.random().toString(36).substr(2, 9),
               date, ticker, name: ticker,
               direction, quantity: qty, unitPrice,
-              category: 'Stock', fee, tax, totalAmount,
+              category: 'General', fee, tax, totalAmount,
               notes
             });
           }
