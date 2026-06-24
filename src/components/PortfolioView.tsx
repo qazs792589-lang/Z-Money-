@@ -100,8 +100,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         const endPVal = 100 + (endPt.portfolioRoi || 0);
         const portfolioChange = ((endPVal / startPVal) - 1) * 100;
 
-        // Portfolio Absolute Value Change (TWR adjusted absolute change)
-        const portfolioAbsChange = (endPt.adjustedValue || 0) - (startPt.adjustedValue || 0);
+        // Portfolio Absolute Value Change (cumulative realized + unrealized profit change)
+        const portfolioAbsChange = (endPt.totalPL || 0) - (startPt.totalPL || 0);
         
         const benchChanges: Record<string, number> = {};
         const benchAbsChanges: Record<string, number> = {};
@@ -695,31 +695,22 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         const val = Number(v);
                         if (isNaN(val)) return '';
                         if (viewMode === 'ratio') return `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
-                        if (val >= 1000000) return `$${(val/1000000).toFixed(1)}M`;
-                        if (val >= 1000) return `$${(val/1000).toFixed(0)}k`;
-                        return `$${val}`;
+                        
+                        const isNegative = val < 0;
+                        const absVal = Math.abs(val);
+                        let formatted = '';
+                        if (absVal >= 1000000) formatted = `$${(absVal/1000000).toFixed(1)}M`;
+                        else if (absVal >= 1000) formatted = `$${(absVal/1000).toFixed(0)}k`;
+                        else formatted = `$${absVal}`;
+                        return isNegative ? `-${formatted}` : formatted;
                       }}
                     />
-                    {viewMode === 'absolute' && (
-                      <YAxis 
-                        yAxisId="right"
-                        orientation="right"
-                        type="number"
-                        stroke="var(--text-main)" 
-                        fontSize={8} 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tickMargin={8} 
-                        width={45}
-                        domain={['auto', 'auto']}
-                        tickFormatter={(v) => Number(v).toLocaleString()}
-                      />
-                    )}
                     <Tooltip
                       cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
                       position={isMobile ? { x: 10, y: 10 } : undefined}
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
+                          const originalPoint = chartData.find(d => d.name === label) || payload[0].payload;
                           return (
                             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-2.5 md:p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl border-opacity-50 max-w-[230px] md:max-w-none">
                               <div className="text-[10px] text-[var(--text-dim)] font-black uppercase tracking-widest border-b border-[var(--border)] pb-2.5 mb-3 flex items-center justify-between gap-8">
@@ -727,20 +718,48 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                                 <span className="opacity-40 font-mono text-[8px]">SNAPSHOT</span>
                               </div>
                               <div className={cn("space-y-3", isMobile && "space-y-1.5")}>
-                                {payload.map((item: any, idx: number) => (
-                                  <div key={idx} className={cn("flex items-center justify-between gap-12", isMobile && "gap-6")}>
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color || '#888' }} />
-                                      <span className="text-[11px] font-bold text-[var(--text-main)]">{item.name}</span>
+                                {payload.map((item: any, idx: number) => {
+                                  const val = Number(item.value) || 0;
+                                  const isNegative = val < 0;
+                                  const isBenchmark = item.name.includes('大盤') || item.name.includes('指數');
+                                  return (
+                                    <div key={idx} className={cn("flex items-center justify-between gap-12", isMobile && "gap-6")}>
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color || '#888' }} />
+                                        <span className="text-[11px] font-bold text-[var(--text-main)]">{item.name}</span>
+                                      </div>
+                                      <span className={cn(
+                                        "text-xs font-mono font-black",
+                                        isBenchmark ? "text-[var(--text-main)]" : (!isNegative ? "text-[var(--success)]" : "text-[var(--danger)]")
+                                      )}>
+                                        {viewMode === 'ratio' 
+                                          ? `${!isNegative ? '+' : ''}${val.toFixed(2)}%`
+                                          : isBenchmark
+                                            ? val.toLocaleString()
+                                            : `${!isNegative ? '+' : '-'}$${Math.abs(val).toLocaleString()}`
+                                        }
+                                      </span>
                                     </div>
-                                    <span className={cn("text-xs font-mono font-black", (item.value || 0) >= 0 ? "text-[var(--text-main)]" : "text-[var(--danger)]")}>
-                                      {viewMode === 'ratio' 
-                                        ? `${(item.value || 0) >= 0 ? '+' : ''}${(item.value || 0).toFixed(2)}%`
-                                        : `${item.name.includes('大盤') || item.name.includes('指數') ? '' : '$'}${Number(item.value).toLocaleString()}`
-                                      }
-                                    </span>
+                                  );
+                                })}
+
+                                {viewMode === 'absolute' && (
+                                  <div className="border-t border-[var(--border)] pt-2 mt-2 space-y-1.5 opacity-80">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                      <span className="text-[var(--text-dim)]">├ 未實現盈虧</span>
+                                      <span className={cn("font-mono font-bold", (originalPoint.profit || 0) >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                                        {(originalPoint.profit || 0) >= 0 ? '+' : '-'}${Math.abs(originalPoint.profit || 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px]">
+                                      <span className="text-[var(--text-dim)]">└ 已實現盈虧</span>
+                                      <span className={cn("font-mono font-bold", (originalPoint.realizedProfit || 0) >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                                        {(originalPoint.realizedProfit || 0) >= 0 ? '+' : '-'}${Math.abs(originalPoint.realizedProfit || 0).toLocaleString()}
+                                      </span>
+                                    </div>
                                   </div>
-                                ))}
+                                )}
+
                                 {viewMode === 'ratio' && payload.length >= 2 && (
                                   <div className={cn("border-t border-[var(--border)] pt-3 mt-1 space-y-1.5", isMobile && "pt-2 mt-1 space-y-1")}>
                                     <span className="text-[10px] font-black text-[var(--text-dim)] uppercase tracking-widest block mb-1.5">超額收益 (Alpha)</span>
@@ -781,27 +800,29 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <Line 
                       yAxisId="left"
                       type="monotone" 
-                      name={viewMode === 'ratio' ? "個人帳戶" : "資產金額"} 
-                      dataKey={viewMode === 'ratio' ? "portfolioRoi" : "adjustedValue"} 
+                      name={viewMode === 'ratio' ? "個人帳戶" : "累計損益"} 
+                      dataKey={viewMode === 'ratio' ? "portfolioRoi" : "totalPL"} 
                       stroke="var(--accent)" 
                       strokeWidth={4} 
                       dot={false} 
                       activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--accent)' }} 
                       animationDuration={1000}
                     />
-                    <Line 
-                      yAxisId={viewMode === 'ratio' ? "left" : "right"}
-                      type="monotone" 
-                      name={viewMode === 'ratio' ? "大盤指數" : "大盤點數"} 
-                      dataKey={viewMode === 'ratio' ? "marketRoi" : "marketPrice"} 
-                      stroke="var(--text-dim)" 
-                      strokeWidth={2} 
-                      strokeDasharray="4 4" 
-                      dot={false} 
-                      activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--text-dim)' }} 
-                      opacity={0.6}
-                      animationDuration={1500}
-                    />
+                    {viewMode === 'ratio' && (
+                      <Line 
+                        yAxisId="left"
+                        type="monotone" 
+                        name="大盤指數" 
+                        dataKey="marketRoi" 
+                        stroke="var(--text-dim)" 
+                        strokeWidth={2} 
+                        strokeDasharray="4 4" 
+                        dot={false} 
+                        activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--text-dim)' }} 
+                        opacity={0.6}
+                        animationDuration={1500}
+                      />
+                    )}
                     {refAreaLeft && refAreaRight && React.createElement(ReferenceArea as any, {
                         yAxisId: 'left',
                         x1: refAreaLeft,

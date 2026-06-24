@@ -741,12 +741,15 @@ export default function App() {
       // Group transactions by ticker for easier processing
       const tickers = Object.keys(appData.stockGroups);
 
+      let cumulativeRealizedPL = 0;
+
       tickers.forEach(ticker => {
         const txs = appData.stockGroups[ticker] || [];
         const pastTxs = txs.filter(t => t.date <= date);
 
         let shares = 0;
         let cost = 0;
+        let tickerRealizedPL = 0;
 
         pastTxs.forEach(t => {
           if (t.direction === 'BUY') {
@@ -754,16 +757,24 @@ export default function App() {
             cost += t.totalAmount;
           } else if (t.direction === 'SELL') {
             const currentAvg = shares > 0 ? cost / shares : 0;
+            const sellRevenue = Math.abs(t.totalAmount);
+            const costBasis = currentAvg * t.quantity;
+            const profit = sellRevenue - costBasis;
+            tickerRealizedPL += profit;
+
             shares -= t.quantity;
-            cost -= (currentAvg * t.quantity);
+            cost -= costBasis;
           } else if (t.direction === 'DIVIDEND') {
-            if (!t.isManualRealized) {
-              // Use Math.abs to handle inconsistent signs in backup data (some +, some -)
-              // Dividends should ALWAYS reduce the cost basis in net outlay approach
+            const isRealized = t.isManualRealized !== undefined ? t.isManualRealized : true;
+            if (isRealized) {
+              tickerRealizedPL += Math.abs(t.totalAmount);
+            } else {
               cost -= Math.abs(t.totalAmount);
             }
           }
         });
+
+        cumulativeRealizedPL += tickerRealizedPL;
 
         if (shares > 0) {
           // Find the price for this ticker on or before this date
@@ -786,6 +797,7 @@ export default function App() {
         value: Math.floor(totalValue),
         cost: Math.floor(totalCost),
         profit: Math.floor(totalValue - totalCost),
+        realizedProfit: Math.floor(cumulativeRealizedPL),
         portfolioRoi: totalCost > 0 ? ((totalValue / totalCost) - 1) * 100 : 0,
         breakdown
       };
@@ -857,6 +869,7 @@ export default function App() {
         cashFlow,
         portfolioRoi: nav - 100,
         adjustedValue,
+        totalPL: d.profit + (d.realizedProfit || 0),
         marketRoi,
         marketPrice: currentMarketPrice
       };
