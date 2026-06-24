@@ -705,6 +705,21 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         return isNegative ? `-${formatted}` : formatted;
                       }}
                     />
+                    {viewMode === 'absolute' && (
+                      <YAxis 
+                        yAxisId="right"
+                        orientation="right"
+                        type="number"
+                        stroke="var(--text-dim)" 
+                        fontSize={8} 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tickMargin={8} 
+                        width={45}
+                        domain={['auto', 'auto']}
+                        tickFormatter={(v) => Number(v).toLocaleString()}
+                      />
+                    )}
                     <Tooltip
                       cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
                       position={isMobile ? { x: 10, y: 10 } : undefined}
@@ -808,21 +823,19 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--accent)' }} 
                       animationDuration={1000}
                     />
-                    {viewMode === 'ratio' && (
-                      <Line 
-                        yAxisId="left"
-                        type="monotone" 
-                        name="大盤指數" 
-                        dataKey="marketRoi" 
-                        stroke="var(--text-dim)" 
-                        strokeWidth={2} 
-                        strokeDasharray="4 4" 
-                        dot={false} 
-                        activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--text-dim)' }} 
-                        opacity={0.6}
-                        animationDuration={1500}
-                      />
-                    )}
+                    <Line 
+                      yAxisId={viewMode === 'ratio' ? "left" : "right"}
+                      type="monotone" 
+                      name={viewMode === 'ratio' ? "大盤指數" : "大盤點數"} 
+                      dataKey={viewMode === 'ratio' ? "marketRoi" : "marketPrice"} 
+                      stroke="var(--text-dim)" 
+                      strokeWidth={2} 
+                      strokeDasharray="4 4" 
+                      dot={false} 
+                      activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--text-dim)' }} 
+                      opacity={0.6}
+                      animationDuration={1500}
+                    />
                     {refAreaLeft && refAreaRight && React.createElement(ReferenceArea as any, {
                         yAxisId: 'left',
                         x1: refAreaLeft,

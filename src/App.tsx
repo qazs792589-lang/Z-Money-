@@ -760,14 +760,18 @@ export default function App() {
             const sellRevenue = Math.abs(t.totalAmount);
             const costBasis = currentAvg * t.quantity;
             const profit = sellRevenue - costBasis;
-            tickerRealizedPL += profit;
+            if (t.date >= '2026-01-01') {
+              tickerRealizedPL += profit;
+            }
 
             shares -= t.quantity;
             cost -= costBasis;
           } else if (t.direction === 'DIVIDEND') {
             const isRealized = t.isManualRealized !== undefined ? t.isManualRealized : true;
             if (isRealized) {
-              tickerRealizedPL += Math.abs(t.totalAmount);
+              if (t.date >= '2026-01-01') {
+                tickerRealizedPL += Math.abs(t.totalAmount);
+              }
             } else {
               cost -= Math.abs(t.totalAmount);
             }
