@@ -992,6 +992,8 @@ export default function App() {
 
   const handleEditTx = (tx: Transaction) => {
     setEditingTxId(tx.id);
+    const validCategories: TransactionCategory[] = ['General', 'ETF', 'DayTrade', 'Custom'];
+    const safeCategory = validCategories.includes(tx.category) ? tx.category : 'General';
     setFormData({
       date: tx.date,
       ticker: tx.ticker,
@@ -999,7 +1001,7 @@ export default function App() {
       direction: tx.direction,
       quantity: tx.quantity,
       unitPrice: tx.unitPrice,
-      category: tx.category,
+      category: safeCategory,
       customFee: tx.fee,
       customTax: tx.tax,
       manualFee: tx.fee,
