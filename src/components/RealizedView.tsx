@@ -77,6 +77,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       realizedCount: number;
       isHolding: boolean;
       lastOpDate: string;
+      totalPL: number;
+      totalCost: number;
+      totalRoi: number;
     }> = {};
 
     Object.entries(appData.stockGroups).forEach(([ticker, txs]: [string, any]) => {
@@ -105,6 +108,18 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
       const lastOpDate = txs.reduce((latest: string, tx: any) => tx.date > latest ? tx.date : latest, '0000-00-00');
 
+      const h = appData.holdingsMap?.[ticker];
+      let unrealizedPL = 0;
+      let unrealizedCost = 0;
+      if (h && currentShares > 0) {
+        const price = marketPrices[ticker] || h.avgCost;
+        unrealizedPL = price * currentShares - h.totalInvested;
+        unrealizedCost = h.totalInvested;
+      }
+      const totalPL = totalProfit + unrealizedPL;
+      const totalCost = totalRealizedCost + unrealizedCost;
+      const totalRoi = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
+
       groups[ticker] = {
         name: txs[0]?.name || ticker,
         transactions: displayRows,
@@ -114,7 +129,10 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
         cumulativeShares: totalRealizedShares,
         realizedCount: realizedItems.length,
         isHolding: currentShares > 0,
-        lastOpDate
+        lastOpDate,
+        totalPL,
+        totalCost,
+        totalRoi
       };
     });
 
@@ -123,7 +141,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       if (!a[1].isHolding && b[1].isHolding) return 1;
       return b[1].lastOpDate.localeCompare(a[1].lastOpDate);
     });
-  }, [appData?.stockGroups, appData?.realizedList, appData?.holdingsMap]);
+  }, [appData?.stockGroups, appData?.realizedList, appData?.holdingsMap, marketPrices]);
 
   const globalRealized = useMemo(() => {
     const list = appData?.realizedList || [];
@@ -345,16 +363,24 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="flex flex-col items-end">
-                        <span className={cn("text-lg md:text-xl font-mono font-black", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                          {group.cumulativeProfit >= 0 ? '+' : ''}{(group.cumulativeProfit || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </span>
-                        {group.cumulativeCost > 0 && (
-                          <div className={cn("text-[10px] font-bold flex items-center gap-1", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {group.cumulativeProfit >= 0 ? '▲' : '▼'} {group.cumulativeCost > 0 ? ((group.cumulativeProfit / group.cumulativeCost) * 100).toFixed(2) : '0.00'}%
+                      {(() => {
+                        const displayVal = group.isHolding ? group.totalPL : group.cumulativeProfit;
+                        const displayRoi = group.isHolding ? group.totalRoi : (group.cumulativeCost > 0 ? (group.cumulativeProfit / group.cumulativeCost) * 100 : 0);
+                        return (
+                          <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-1 opacity-50">
+                              {group.isHolding ? '全期總收益' : '已實現收益'}
+                            </span>
+                            <span className={cn("text-lg md:text-xl font-mono font-black", displayVal >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                              {displayVal >= 0 ? '+' : ''}
+                              {Math.round(displayVal).toLocaleString()}
+                            </span>
+                            <div className={cn("text-[10px] font-bold flex items-center gap-1 mt-0.5", displayVal >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                              {displayVal >= 0 ? '▲' : '▼'} {displayRoi.toFixed(2)}%
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
