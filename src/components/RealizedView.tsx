@@ -16,12 +16,14 @@ interface RealizedViewProps {
   tickerMetadata: Record<string, { assetClass?: string }>;
   holdings: Holding[];
   marketPrices: Record<string, number>;
+  weeklyPrices?: any[];
 }
 
 export const RealizedView: React.FC<RealizedViewProps> = ({ 
   appData, onImport, onUpdateNotes, onToggleRealized, 
   netWorthEntries, setNetWorthEntries, historicalChartData = [],
-  tickerMetadata = {}, holdings = [], marketPrices = {}
+  tickerMetadata = {}, holdings = [], marketPrices = {},
+  weeklyPrices = []
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -112,8 +114,11 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       let unrealizedPL = 0;
       let unrealizedCost = 0;
       if (h && currentShares > 0) {
-        const price = marketPrices[ticker] || h.avgCost;
-        unrealizedPL = price * currentShares - h.totalInvested;
+        const latestWeekly = (weeklyPrices || [])
+          .filter((wp: any) => wp.ticker === ticker)
+          .sort((a: any, b: any) => b.date.localeCompare(a.date))[0]?.price;
+        const price = marketPrices[ticker] || latestWeekly || h.avgCost;
+        unrealizedPL = ((price - h.avgCost) * currentShares) + ((h as any).unrealizedDividends || 0);
         unrealizedCost = h.totalInvested;
       }
       const totalPL = totalProfit + unrealizedPL;
@@ -141,7 +146,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       if (!a[1].isHolding && b[1].isHolding) return 1;
       return b[1].lastOpDate.localeCompare(a[1].lastOpDate);
     });
-  }, [appData?.stockGroups, appData?.realizedList, appData?.holdingsMap, marketPrices]);
+  }, [appData?.stockGroups, appData?.realizedList, appData?.holdingsMap, marketPrices, weeklyPrices]);
 
   const globalRealized = useMemo(() => {
     const list = appData?.realizedList || [];
