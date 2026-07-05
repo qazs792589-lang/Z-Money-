@@ -368,52 +368,19 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      {(() => {
-                        const realizedPL = group.cumulativeProfit;
-                        const realizedRoi = group.cumulativeCost > 0 ? (realizedPL / group.cumulativeCost) * 100 : 0;
-
-                        // 計算該股的未實現
-                        const h = appData.holdingsMap?.[ticker];
-                        let unrealizedPL = 0;
-                        let unrealizedRoi = 0;
-                        if (h && h.currentShares > 0) {
-                          const latestWeekly = (weeklyPrices || [])
-                            .filter((wp: any) => wp.ticker === ticker)
-                            .sort((a: any, b: any) => b.date.localeCompare(a.date))[0]?.price;
-                          const price = marketPrices[ticker] || latestWeekly || h.avgCost;
-                          unrealizedPL = ((price - h.avgCost) * h.currentShares) + ((h as any).unrealizedDividends || 0);
-                          unrealizedRoi = h.avgCost > 0 ? ((price / h.avgCost) - 1) * 100 : 0;
-                        }
-
-                        return (
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="flex items-center gap-1.5 text-xs font-mono font-bold">
-                              <span className="text-[9px] text-[var(--text-dim)] uppercase tracking-wider opacity-60">已實現:</span>
-                              <span className={realizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}>
-                                {realizedPL >= 0 ? '+' : ''}
-                                {`$${Math.round(realizedPL).toLocaleString()}`}
-                              </span>
-                              {group.cumulativeCost > 0 && (
-                                <span className={cn("text-[9px] font-bold px-1 py-0.2 rounded bg-opacity-10", realizedPL >= 0 ? "text-[var(--success)] bg-[var(--success)]" : "text-[var(--danger)] bg-[var(--danger)]")}>
-                                  {realizedPL >= 0 ? '▲' : '▼'}{Math.abs(realizedRoi).toFixed(1)}%
-                                </span>
-                              )}
-                            </div>
-                            {group.isHolding && (
-                              <div className="flex items-center gap-1.5 text-xs font-mono font-bold">
-                                <span className="text-[9px] text-[var(--text-dim)] uppercase tracking-wider opacity-60">未實現:</span>
-                                <span className={unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}>
-                                  {unrealizedPL >= 0 ? '+' : ''}
-                                  {`$${Math.round(unrealizedPL).toLocaleString()}`}
-                                </span>
-                                <span className={cn("text-[9px] font-bold px-1 py-0.2 rounded bg-opacity-10", unrealizedPL >= 0 ? "text-[var(--success)] bg-[var(--success)]" : "text-[var(--danger)] bg-[var(--danger)]")}>
-                                  {unrealizedPL >= 0 ? '▲' : '▼'}{Math.abs(unrealizedRoi).toFixed(1)}%
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      <div className="flex flex-col items-end justify-center">
+                        <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-wider block mb-1">
+                          全期總收益
+                        </span>
+                        <span className={cn("text-base md:text-lg font-mono font-black block leading-none", group.totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                          {group.totalPL >= 0 ? '+' : '-'}${Math.abs(Math.round(group.totalPL)).toLocaleString()}
+                        </span>
+                        {group.totalCost > 0 && (
+                          <span className={cn("text-[10px] md:text-xs font-black font-mono block mt-1.5 leading-none", group.totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                            {group.totalPL >= 0 ? '▲' : '▼'} {Math.abs(group.totalRoi).toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -448,8 +415,13 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <Coins size={10} className="opacity-40" /> 已結損益
                       </span>
                       <span className={cn("text-xs md:text-lg font-mono font-black", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                        {group.cumulativeProfit >= 0 ? '+' : ''}{(group.cumulativeProfit || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {group.cumulativeProfit >= 0 ? '+' : '-'}${(Math.abs(group.cumulativeProfit) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
+                      {group.cumulativeCost > 0 && (
+                        <span className={cn("text-[9px] font-black font-mono mt-1", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                          {group.cumulativeProfit >= 0 ? '▲' : '▼'}{Math.abs((group.cumulativeProfit / group.cumulativeCost) * 100).toFixed(2)}%
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
