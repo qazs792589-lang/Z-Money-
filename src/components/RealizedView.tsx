@@ -79,8 +79,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       realizedCount: number;
       isHolding: boolean;
       lastOpDate: string;
-      totalPL: number;
-      totalCost: number;
+      totalPLTwd: number;
+      totalCostTwd: number;
       totalRoi: number;
     }> = {};
 
@@ -89,9 +89,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       if (realizedItems.length === 0) return;
       const currentShares = appData.holdingsMap?.[ticker]?.currentShares || 0;
 
-      const totalProfit = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.profit, 0);
-      const totalRealizedCost = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalCost, 0);
-      const totalRevenue = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + r.totalRevenue, 0);
+      const totalProfit = realizedItems.reduce((sum: number, r: any) => sum + (r.profitTwd !== undefined ? r.profitTwd : r.profit), 0);
+      const totalRealizedCost = realizedItems.reduce((sum: number, r: any) => sum + (r.totalCostTwd !== undefined ? r.totalCostTwd : r.totalCost), 0);
+      const totalRevenue = realizedItems.reduce((sum: number, r: any) => sum + (r.totalRevenueTwd !== undefined ? r.totalRevenueTwd : r.totalRevenue), 0);
       const totalRealizedShares = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + (r.shares || 0), 0);
 
       const displayRows = [...txs].sort((a, b) => a.date.localeCompare(b.date)).map(tx => {
@@ -101,29 +101,41 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
         
         return {
           ...tx,
-          realizedProfit: realizedInfo?.profit,
-          realizedRoi: isDividend ? undefined : realizedInfo?.roi,
+          realizedProfit: realizedInfo?.profitTwd !== undefined ? realizedInfo.profitTwd : realizedInfo?.profit,
+          realizedRoi: isDividend ? undefined : (realizedInfo?.totalCostTwd !== undefined && realizedInfo.totalCostTwd > 0 
+            ? (realizedInfo.profitTwd / realizedInfo.totalCostTwd) * 100 
+            : realizedInfo?.roi),
           daysHeld: realizedInfo?.daysHeld
         };
       });
 
-
       const lastOpDate = txs.reduce((latest: string, tx: any) => tx.date > latest ? tx.date : latest, '0000-00-00');
 
       const h = appData.holdingsMap?.[ticker];
-      let unrealizedPL = 0;
-      let unrealizedCost = 0;
+      const isUS = ticker && /^[A-Z]+$/.test(ticker) && ticker.length <= 5;
+      
+      let unrealizedPLTwd = 0;
+      let unrealizedCostTwd = 0;
+      
       if (h && currentShares > 0) {
         const latestWeekly = (weeklyPrices || [])
           .filter((wp: any) => wp.ticker === ticker)
           .sort((a: any, b: any) => b.date.localeCompare(a.date))[0]?.price;
         const price = marketPrices[ticker] || latestWeekly || h.avgCost;
-        unrealizedPL = ((price - h.avgCost) * currentShares) + ((h as any).unrealizedDividends || 0);
-        unrealizedCost = h.totalInvested;
+
+        if (isUS) {
+          unrealizedCostTwd = h.totalInvestedTwd || (h.totalInvested * 31);
+          const twdValue = price * h.currentShares * 31;
+          unrealizedPLTwd = twdValue - unrealizedCostTwd;
+        } else {
+          unrealizedCostTwd = h.totalInvested;
+          unrealizedPLTwd = (price * h.currentShares) - h.totalInvested;
+        }
       }
-      const totalPL = totalProfit + unrealizedPL;
-      const totalCost = totalRealizedCost + unrealizedCost;
-      const totalRoi = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
+      
+      const totalPLTwd = totalProfit + unrealizedPLTwd;
+      const totalCostTwd = totalRealizedCost + unrealizedCostTwd;
+      const totalRoi = totalCostTwd > 0 ? (totalPLTwd / totalCostTwd) * 100 : 0;
 
       groups[ticker] = {
         name: txs[0]?.name || ticker,
@@ -135,8 +147,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
         realizedCount: realizedItems.length,
         isHolding: currentShares > 0,
         lastOpDate,
-        totalPL,
-        totalCost,
+        totalPLTwd,
+        totalCostTwd,
         totalRoi
       };
     });
@@ -150,9 +162,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
 
   const globalRealized = useMemo(() => {
     const list = appData?.realizedList || [];
-    const profit = list.reduce((sum: number, r: any) => sum + r.profit, 0);
-    const cost = list.reduce((sum: number, r: any) => sum + r.totalCost, 0);
-    const revenue = list.reduce((sum: number, r: any) => sum + r.totalRevenue, 0);
+    const profit = list.reduce((sum: number, r: any) => sum + (r.profitTwd !== undefined ? r.profitTwd : r.profit), 0);
+    const cost = list.reduce((sum: number, r: any) => sum + (r.totalCostTwd !== undefined ? r.totalCostTwd : r.totalCost), 0);
+    const revenue = list.reduce((sum: number, r: any) => sum + (r.totalRevenueTwd !== undefined ? r.totalRevenueTwd : r.totalRevenue), 0);
     const roi = cost > 0 ? (profit / cost) * 100 : 0;
     return { profit, cost, revenue, roi, count: list.length };
   }, [appData?.realizedList]);
@@ -372,12 +384,12 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <span className="text-[9px] text-[var(--text-dim)] font-black uppercase tracking-wider block mb-1">
                           全期總收益
                         </span>
-                        <span className={cn("text-base md:text-lg font-mono font-black block leading-none", group.totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                          {group.totalPL >= 0 ? '+' : '-'}${Math.abs(Math.round(group.totalPL)).toLocaleString()}
+                        <span className={cn("text-base md:text-lg font-mono font-black block leading-none", group.totalPLTwd >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                          {group.totalPLTwd >= 0 ? '+' : '-'}${Math.abs(Math.round(group.totalPLTwd)).toLocaleString()}
                         </span>
-                        {group.totalCost > 0 && (
-                          <span className={cn("text-[10px] md:text-xs font-black font-mono block mt-1.5 leading-none", group.totalPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                            {group.totalPL >= 0 ? '▲' : '▼'} {Math.abs(group.totalRoi).toFixed(2)}%
+                        {group.totalCostTwd > 0 && (
+                          <span className={cn("text-[10px] md:text-xs font-black font-mono block mt-1.5 leading-none", group.totalPLTwd >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                            {group.totalPLTwd >= 0 ? '▲' : '▼'} {Math.abs(group.totalRoi).toFixed(2)}%
                           </span>
                         )}
                       </div>
@@ -399,7 +411,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <Wallet size={10} className="opacity-40" /> 歷史成本
                       </span>
                       <span className="text-xs md:text-lg font-mono font-black text-[var(--text-main)]">
-                        ${(group.cumulativeCost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        ${Math.round(group.cumulativeCost || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex flex-col border-l border-[var(--border)]/30 pl-2">
@@ -407,7 +419,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <TrendingUp size={10} className="opacity-40" /> 歷史收入
                       </span>
                       <span className="text-xs md:text-lg font-mono font-bold text-[var(--text-main)]">
-                        ${(group.cumulativeRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        ${Math.round(group.cumulativeRevenue || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex flex-col text-right border-l border-[var(--border)]/30 pl-2">
@@ -415,10 +427,10 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                         <Coins size={10} className="opacity-40" /> 已結損益
                       </span>
                       <span className={cn("text-xs md:text-lg font-mono font-black", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                        {group.cumulativeProfit >= 0 ? '+' : '-'}${(Math.abs(group.cumulativeProfit) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {group.cumulativeProfit >= 0 ? '+' : '-'}${Math.round(Math.abs(group.cumulativeProfit) || 0).toLocaleString()}
                       </span>
                       {group.cumulativeCost > 0 && (
-                        <span className={cn("text-[9px] font-black font-mono mt-1", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                        <span className={cn("text-[9px] font-black font-mono mt-1 block", group.cumulativeProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
                           {group.cumulativeProfit >= 0 ? '▲' : '▼'}{Math.abs((group.cumulativeProfit / group.cumulativeCost) * 100).toFixed(2)}%
                         </span>
                       )}
@@ -447,9 +459,14 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                           const isSell = tx.direction === 'SELL';
                           const isDividend = tx.direction === 'DIVIDEND';
                           const totalFees = (tx.fee || 0) + (tx.tax || 0);
+                          const isTxUS = tx.currency === 'USD';
                           
-                          // Cash Flow Logic: BUY is negative (outflow), SELL/DIVIDEND is positive (inflow)
-                          const cashFlow = isBuy ? -tx.totalAmount : Math.abs(tx.totalAmount);
+                          // Calculate TWD cash flow amount (using twdAmount if exists, else rate 31 fallback)
+                          const twdAmount = isTxUS 
+                            ? (tx.twdAmount || (Math.abs(tx.totalAmount) * 31)) 
+                            : Math.abs(tx.totalAmount);
+                          
+                          const cashFlowVal = isBuy ? -twdAmount : twdAmount;
                           
                           // Shares sign: BUY is NEGATIVE (green), SELL is POSITIVE (red)
                           const displayQty = isBuy ? -tx.quantity : (isSell ? tx.quantity : 0);
@@ -469,14 +486,18 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                                 {totalFees > 0 ? `$${totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-black text-right whitespace-nowrap", 
-                                isDividend ? "text-amber-500" : (cashFlow >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
+                                isDividend ? "text-amber-500" : (cashFlowVal >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
-                                {cashFlow !== 0 ? `${cashFlow > 0 ? '+' : ''}${cashFlow.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
+                                {cashFlowVal !== 0 
+                                  ? `${cashFlowVal > 0 ? '+' : ''}$${Math.round(cashFlowVal).toLocaleString()}`
+                                  : '-'}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right whitespace-nowrap", 
                                 isDividend ? "text-amber-500" : (tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
-                                {tx.realizedProfit !== undefined ? `${tx.realizedProfit >= 0 ? '+' : ''}${tx.realizedProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
+                                {tx.realizedProfit !== undefined 
+                                  ? `${tx.realizedProfit >= 0 ? '+' : ''}$${Math.round(tx.realizedProfit).toLocaleString()}`
+                                  : '-'}
                               </td>
                               <td className="px-6 py-4 text-center whitespace-nowrap">
                                 {tx.realizedRoi !== undefined ? (

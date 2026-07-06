@@ -222,15 +222,15 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <div className="stat-label flex items-center gap-2">
               <PieChartIcon size={12} className="text-[var(--accent)]" /> 當前總市值 (含息)
             </div>
-            <div className="stat-value text-[var(--accent)] text-2xl font-mono">${stats.totalMarketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            <div className="stat-value text-[var(--accent)] text-2xl font-mono">${Math.round(stats.totalMarketValueTwd || 0).toLocaleString()}</div>
           </div>
-          <div className={cn("stat-box transition-all duration-500", stats.unrealizedPL >= 0 ? "border-[var(--success)]/50 shadow-[0_0_15px_rgba(255,69,58,0.1)]" : "border-[var(--danger)]/50 shadow-[0_0_15px_rgba(50,215,75,0.1)]")}>
+          <div className={cn("stat-box transition-all duration-500", stats.unrealizedPLTwd >= 0 ? "border-[var(--success)]/50 shadow-[0_0_15px_rgba(255,69,58,0.1)]" : "border-[var(--danger)]/50 shadow-[0_0_15px_rgba(50,215,75,0.1)]")}>
             <div className="stat-label flex items-center gap-2">
-              <Activity size={12} className={stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"} /> 帳面總損益 (含息)
+              <Activity size={12} className={stats.unrealizedPLTwd >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"} /> 帳面總損益 (含息)
             </div>
-            <div className={cn("stat-value text-2xl font-mono", stats.unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-              {stats.unrealizedPL >= 0 ? '+' : ''}{stats.unrealizedPL.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              <span className="text-xs ml-2 opacity-60 font-sans tracking-normal">({stats.unrealizedRoi >= 0 ? '+' : ''}{stats.unrealizedRoi.toFixed(2)}%)</span>
+            <div className={cn("stat-value text-2xl font-mono", stats.unrealizedPLTwd >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+              {stats.unrealizedPLTwd >= 0 ? '+' : ''}{Math.round(stats.unrealizedPLTwd || 0).toLocaleString()}
+              <span className="text-xs ml-2 opacity-60 font-sans tracking-normal">({stats.unrealizedRoiTwd >= 0 ? '+' : ''}{(stats.unrealizedRoiTwd || 0).toFixed(2)}%)</span>
             </div>
           </div>
         </div>
