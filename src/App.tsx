@@ -1004,8 +1004,8 @@ export default function App() {
       category: safeCategory,
       customFee: tx.fee,
       customTax: tx.tax,
-      manualFee: tx.fee,
-      manualTax: tx.direction === 'SELL' ? tx.tax : '',
+      manualFee: tx.fee ? tx.fee : '',
+      manualTax: tx.tax ? tx.tax : '',
       notes: tx.notes || ''
     });
     setActiveView('A');
@@ -1481,7 +1481,7 @@ export default function App() {
 
                         <div className="flex flex-col text-right lg:text-left">
                           <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-tighter mb-1 font-bold">{preview.taxLabel}</span>
-                          {formData.direction === 'SELL' ? (
+                          {formData.direction === 'SELL' || formData.direction === 'DIVIDEND' ? (
                             <div className="relative group">
                               <input
                                 type="number"

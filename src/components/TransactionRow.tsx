@@ -92,7 +92,13 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
             <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold truncate leading-none">
               <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
               <span className="mx-2 opacity-30">|</span>
-              <span className="text-[var(--text-dim)] mr-1">單價:</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <span className="text-[var(--text-dim)] mr-1">{tx.direction === 'DIVIDEND' ? '每股股息:' : '單價:'}</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {((tx.fee || 0) + (tx.tax || 0) > 0) && (
+                <>
+                  <span className="mx-2 opacity-30">|</span>
+                  <span className="text-[var(--text-dim)] mr-1">費用:</span><span className="opacity-50 text-[10px]">$</span>{((tx.fee || 0) + (tx.tax || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </>
+              )}
             </p>
             {tx.notes && (
               <p className="text-xs md:text-[13px] text-[var(--text-main)] mt-1.5 flex items-center gap-1.5 max-w-[260px] md:max-w-[450px] leading-none" title={tx.notes}>

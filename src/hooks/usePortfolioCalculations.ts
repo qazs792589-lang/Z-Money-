@@ -151,7 +151,7 @@ export const usePortfolioCalculations = (transactions: Transaction[], marketData
           h.realizedPLTwd += dividendAmountTwd;
           realizedList.push({
             ticker: tx.ticker, name: tx.name, shares: 0, buyPrice: 0, sellPrice: 0, totalCost: 0, totalRevenue: dividendAmount,
-            totalFees: 0, profit: dividendAmount, roi: 0, daysHeld: 0, closeDate: tx.date, notes: tx.notes || '股息收入', sellTxId: tx.id,
+            totalFees: (tx.fee || 0) + (tx.tax || 0), profit: dividendAmount, roi: 0, daysHeld: 0, closeDate: tx.date, notes: tx.notes || '股息收入', sellTxId: tx.id,
             profitTwd: dividendAmountTwd,
             totalCostTwd: 0,
             totalRevenueTwd: dividendAmountTwd
