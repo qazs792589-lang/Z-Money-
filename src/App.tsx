@@ -1,3 +1,7 @@
+import { ExtraFeeSummary } from './components/ExtraFeeSummary';
+import { inclusiveUnrealizedRoi } from './lib/chartDisplay';
+import { InventoryNotice } from './components/InventoryNotice';
+import { findSpotInventoryShortage, spotInventoryMessage } from './lib/spotInventory';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -76,14 +80,17 @@ import { PortfolioView } from './components/PortfolioView';
 import { RealizedView } from './components/RealizedView';
 import { LockScreen } from './components/LockScreen';
 import { Shield, Lock as LockIcon, Unlock as UnlockIcon, AlertCircle } from 'lucide-react';
-import { isTxRealized } from './lib/txUtils';
+import { isTxRealized, getSellNetAmounts, getDividendNetAmounts } from './lib/txUtils';
+import { addShares, getSaleAllocation } from './lib/shareMath';
+import { moveTransactionWithinDay, appendTransactionSequence, compareTransactionsNewestFirst, ensureTransactionSequence, sequenceForTransaction } from './lib/transactionOrder';
 
 
 export default function App() {
+  const [inventoryNotice, setInventoryNotice] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'A' | 'B' | 'C'>('A');
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('z_money_transactions');
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+    return ensureTransactionSequence(saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS);
   });
   const [configs] = useState<Record<TransactionCategory, Config>>(DEFAULT_CONFIGS);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -218,7 +225,7 @@ export default function App() {
           const response = await fetch('./Z-Money-FullBackup-2026-05-10.json');
           if (response.ok) {
             const data = await response.json();
-            if (data.transactions) setTransactions(data.transactions);
+            if (data.transactions) setTransactions(ensureTransactionSequence(data.transactions));
             if (data.tickerOrder) setTickerOrder(data.tickerOrder);
             if (data.tickerMetadata) setTickerMetadata(data.tickerMetadata);
             if (data.netWorthEntries) setNetWorthEntries(data.netWorthEntries);
@@ -540,7 +547,7 @@ export default function App() {
         }
 
         if (newTransactions.length > 0) {
-          setTransactions(prev => [...prev, ...newTransactions]);
+          setTransactions(prev => appendTransactionSequence(prev, newTransactions));
           alert(`成功匯入 ${newTransactions.length} 筆紀錄！`);
         }
       } catch (err) {
@@ -561,9 +568,9 @@ export default function App() {
       alert('目前沒有交易資料可供匯出。');
       return;
     }
-    const headers = "日期,股票代號,股票名稱,交易種類,數量,成交單價,類別,手續費,稅金,交易總額,備註,已實現標記\n";
+    const headers = "日期,股票代號,股票名稱,交易種類,數量,成交單價,類別,手續費,稅金,交易總額,備註,已實現標記,同日順序\n";
     const rows = transactions.map(tx =>
-      `${tx.date},${tx.ticker},"${tx.name}",${tx.direction},${tx.quantity},${tx.unitPrice},${tx.category},${tx.fee},${tx.tax},${tx.totalAmount},"${tx.notes || ''}",${tx.isManualRealized ?? ''}`
+      `${tx.date},${tx.ticker},"${tx.name}",${tx.direction},${tx.quantity},${tx.unitPrice},${tx.category},${tx.fee},${tx.tax},${tx.totalAmount},"${tx.notes || ''}",${tx.isManualRealized ?? ''},${tx.sequence ?? ''}`
     ).join("\n");
 
     const blob = new Blob(["\uFEFF" + headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -589,6 +596,7 @@ export default function App() {
         const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
         const newTxs: Transaction[] = lines.slice(1).map(line => {
           const parts = line.split(csvRegex).map(p => p.trim().replace(/"/g, ''));
+          const sequence = parts[12] !== undefined && parts[12] !== '' ? Number(parts[12]) : NaN;
           return {
             id: Math.random().toString(36).substr(2, 9),
             date: parts[0],
@@ -602,15 +610,17 @@ export default function App() {
             tax: parseFloat(parts[8]),
             totalAmount: parseFloat(parts[9]),
             notes: parts[10] || '',
-            isManualRealized: parts[11] === 'true' ? true : parts[11] === 'false' ? false : undefined
+            isManualRealized: parts[11] === 'true' ? true : parts[11] === 'false' ? false : undefined,
+            sequence: Number.isFinite(sequence) ? sequence : undefined
           };
         });
 
         if (window.confirm(`確定要匯入這 ${newTxs.length} 筆備份資料嗎？\n這將會與現有資料合併。`)) {
           setTransactions(prev => {
-            const existingIds = new Set(prev.map(tx => tx.id));
+            const existing = ensureTransactionSequence(prev);
+            const existingIds = new Set(existing.map(tx => tx.id));
             const uniqueNewTxs = newTxs.filter(tx => !existingIds.has(tx.id));
-            return [...prev, ...uniqueNewTxs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            return appendTransactionSequence(existing, uniqueNewTxs).sort(compareTransactionsNewestFirst);
           });
           alert('匯入與合併成功！');
         }
@@ -648,7 +658,7 @@ export default function App() {
       try {
         const data = JSON.parse(event.target?.result as string);
         if (window.confirm('確定要恢復全系統備份嗎？這將會覆蓋目前的「所有」資料。')) {
-          if (data.transactions) setTransactions(data.transactions);
+          if (data.transactions) setTransactions(ensureTransactionSequence(data.transactions));
           if (data.tickerOrder) setTickerOrder(data.tickerOrder);
           if (data.tickerMetadata) setTickerMetadata(data.tickerMetadata);
           if (data.netWorthEntries) setNetWorthEntries(data.netWorthEntries);
@@ -708,9 +718,29 @@ export default function App() {
     setManualPrice('');
   };
 
+  const handleMoveTransaction = (id: string, step: -1 | 1) => {
+    const target = transactions.find(tx => tx.id === id);
+    if (!target) return;
+    const nextTransactions = moveTransactionWithinDay(transactions, id, step);
+    const issue = findSpotInventoryShortage(nextTransactions, [target.ticker]);
+    if (issue) {
+      setInventoryNotice(spotInventoryMessage(issue));
+      return;
+    }
+    setTransactions(nextTransactions);
+  };
+
   const handleDeleteTransaction = (id: string) => {
+    const target = transactions.find(t => t.id === id);
+    const nextTransactions = transactions.filter(t => t.id !== id);
+    const issue = target ? findSpotInventoryShortage(nextTransactions, [target.ticker]) : null;
+    if (issue) {
+      setInventoryNotice(spotInventoryMessage(issue));
+      return;
+    }
+
     if (window.confirm('確定要刪除這筆交易紀錄嗎？')) {
-      setTransactions(prev => prev.filter(t => t.id !== id));
+      setTransactions(nextTransactions);
     }
   };
 
@@ -750,35 +780,38 @@ export default function App() {
         let shares = 0;
         let cost = 0;
         let tickerRealizedPL = 0;
+        let pendingDividends = 0;
 
         pastTxs.forEach(t => {
           if (t.direction === 'BUY') {
-            shares += t.quantity;
+            shares = addShares(shares, t.quantity);
             cost += t.totalAmount;
           } else if (t.direction === 'SELL') {
+            const sale = getSaleAllocation(shares, t.quantity);
             const currentAvg = shares > 0 ? cost / shares : 0;
-            const sellRevenue = Math.abs(t.totalAmount);
-            const costBasis = currentAvg * t.quantity;
+            const sellRevenue = getSellNetAmounts(t).original;
+            const costBasis = sale.isFullSale ? cost : currentAvg * sale.quantity;
             const profit = sellRevenue - costBasis;
             if (t.date >= '2026-01-01') {
               tickerRealizedPL += profit;
             }
 
-            shares -= t.quantity;
-            cost -= costBasis;
+            shares = sale.remainingShares;
+            cost = sale.isFullSale ? 0 : cost - costBasis;
           } else if (t.direction === 'DIVIDEND') {
-            const isRealized = t.isManualRealized !== undefined ? t.isManualRealized : true;
-            if (isRealized) {
-              if (t.date >= '2026-01-01') {
-                tickerRealizedPL += Math.abs(t.totalAmount);
-              }
+            const dividendAmount = getDividendNetAmounts(t).original;
+            if (isTxRealized(t)) {
+              if (t.date >= '2026-01-01') tickerRealizedPL += dividendAmount;
             } else {
-              cost -= Math.abs(t.totalAmount);
+              // 整筆股息跟隨勾選分類，不參與賣出股份的成本分攤。
+              pendingDividends += dividendAmount;
             }
           }
         });
 
         cumulativeRealizedPL += tickerRealizedPL;
+        // 清倉後補記的未實現股息也保留；股票成本與股息分開計算。
+        totalCost += cost - pendingDividends;
 
         if (shares > 0) {
           // Find the price for this ticker on or before this date
@@ -789,7 +822,6 @@ export default function App() {
           const price = priceEntry ? priceEntry.price : (pastTxs[0]?.unitPrice || 0);
           const value = shares * price;
           totalValue += value;
-          totalCost += cost;
           breakdown[ticker] = Math.floor(value);
         } else {
           breakdown[ticker] = 0;
@@ -829,7 +861,7 @@ export default function App() {
       let cashFlow = 0;
       currentTxs.forEach(t => {
         if (t.direction === 'BUY') cashFlow += Math.abs(t.totalAmount);
-        if (t.direction === 'SELL') cashFlow -= Math.abs(t.totalAmount);
+        if (t.direction === 'SELL') cashFlow -= getSellNetAmounts(t).original;
         if (t.direction === 'DIVIDEND') cashFlow -= Math.abs(t.totalAmount);
       });
 
@@ -883,25 +915,6 @@ export default function App() {
   const handleAddTransaction = () => {
     if (!formData.ticker || formData.unitPrice < 0 || formData.quantity <= 0) return;
 
-    if (formData.direction === 'SELL') {
-      // 安全地計算真正可用的剩餘庫存 (總買入 - 總賣出，排除當前正在編輯的這筆)
-      const relevantTxs = transactions.filter(t => t.ticker === formData.ticker);
-      let trueAvailableShares = 0;
-      relevantTxs.forEach(t => {
-        if (t.direction === 'BUY') trueAvailableShares += t.quantity;
-        if (t.direction === 'SELL' && t.id !== editingTxId) {
-          trueAvailableShares -= t.quantity;
-        }
-      });
-      
-      const maxAllowed = Math.max(0, trueAvailableShares);
-
-      if (formData.quantity > maxAllowed + 0.0001) {
-        alert(`錯誤：賣出數量 (${formData.quantity}) 不可大於真實可用庫存 (${maxAllowed.toLocaleString()})！\n\n請確認先前的買入紀錄是否正確。`);
-        return;
-      }
-    }
-
     const newTx: Transaction = {
       id: editingTxId || Math.random().toString(36).substr(2, 9),
       date: formData.date,
@@ -919,13 +932,20 @@ export default function App() {
       isManualRealized: editingTxId ? transactions.find(t => t.id === editingTxId)?.isManualRealized : undefined
     };
 
+    const previousTx = transactions.find(t => t.id === editingTxId);
+    newTx.sequence = sequenceForTransaction(transactions, previousTx, newTx);
+    const nextTransactions = editingTxId
+      ? transactions.map(t => t.id === editingTxId ? newTx : t)
+      : [...transactions, newTx];
+    const issue = findSpotInventoryShortage(nextTransactions, [newTx.ticker, previousTx?.ticker || newTx.ticker]);
+    if (issue) {
+      setInventoryNotice(spotInventoryMessage(issue));
+      return;
+    }
+    setTransactions(nextTransactions);
     if (editingTxId) {
-      setTransactions(transactions.map(t => t.id === editingTxId ? newTx : t));
       setEditingTxId(null);
-      // Ensure we switch to the new ticker/name if it changed
       setSelectedTicker(newTx.ticker);
-    } else {
-      setTransactions([...transactions, newTx]);
     }
 
     setFormData(prev => ({
@@ -935,8 +955,8 @@ export default function App() {
       unitPrice: 0,
       quantity: 1000,
       notes: '',
-      manualFee: '',
-      manualTax: ''
+      manualFee: 0,
+      manualTax: 0
     }));
   };
 
@@ -1004,8 +1024,8 @@ export default function App() {
       category: safeCategory,
       customFee: tx.fee,
       customTax: tx.tax,
-      manualFee: tx.fee ? tx.fee : '',
-      manualTax: tx.tax ? tx.tax : '',
+      manualFee: tx.fee ?? 0,
+      manualTax: tx.tax ?? 0,
       notes: tx.notes || ''
     });
     setActiveView('A');
@@ -1210,6 +1230,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] font-sans flex flex-col">
+      {inventoryNotice && <InventoryNotice message={inventoryNotice} theme={theme} onClose={() => setInventoryNotice(null)} />}
       <AnimatePresence>
         {isLocked && appPassword && (
           <LockScreen savedPassword={appPassword} onUnlock={() => setIsLocked(false)} />
@@ -1235,7 +1256,7 @@ export default function App() {
             title="點擊圖示切換主題風格"
           >
             <img
-              src="/Z-Test/logo.png"
+              src={`${import.meta.env.BASE_URL}logo.png`}
               alt="Z-Ledger Logo"
               className={cn(
                 "h-10 md:h-12 object-contain rounded-md transition-all duration-300",
@@ -1248,7 +1269,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-3 md:gap-6">
           <div className="flex flex-col items-end">
-            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">資產總市值</span>
+            <span className="text-[8px] md:text-[10px] text-[var(--text-dim)] font-bold uppercase tracking-widest">資產總市值（含息）</span>
             <span className="text-xs md:text-sm font-mono font-bold text-[var(--accent)]">${Math.round(stats.totalMarketValueTwd || 0).toLocaleString()}</span>
           </div>
           <div className="h-8 w-[1px] bg-[var(--border)] hidden sm:block" />
@@ -1471,6 +1492,7 @@ export default function App() {
                             <input
                               type="number"
                               className="bg-transparent border-none p-0 text-2xl font-mono text-[var(--text-main)] font-black w-full focus:outline-none focus:ring-0 placeholder:opacity-20"
+                              aria-label="手續費／匯費"
                               value={formData.manualFee}
                               placeholder={preview.autoFee?.toString()}
                               onChange={(e) => setFormData({ ...formData, manualFee: e.target.value })}
@@ -1486,6 +1508,7 @@ export default function App() {
                               <input
                                 type="number"
                                 className="bg-transparent border-none p-0 text-2xl font-mono text-[var(--text-main)] font-black w-full focus:outline-none focus:ring-0 placeholder:opacity-20 text-right lg:text-left"
+                                aria-label="稅額／股息扣款"
                                 value={formData.manualTax}
                                 placeholder={preview.autoTax?.toString()}
                                 onChange={(e) => setFormData({ ...formData, manualTax: e.target.value })}
@@ -1510,7 +1533,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 setEditingTxId(null);
-                                setFormData(prev => ({ ...prev, ticker: '', name: '', unitPrice: 0, quantity: 1000, notes: '', manualFee: '', manualTax: '' }));
+                                setFormData(prev => ({ ...prev, ticker: '', name: '', unitPrice: 0, quantity: 1000, notes: '', manualFee: 0, manualTax: 0 }));
                               }}
                               className="w-1/3 bg-[var(--accent)] text-white h-[48px] md:h-[56px] rounded-xl font-black text-sm md:text-base hover:opacity-90 active:scale-[0.95] transition-all flex items-center justify-center gap-2"
                             >
@@ -1594,11 +1617,10 @@ export default function App() {
                       const latestWeekly = weeklyPrices.filter(wp => wp.ticker === ticker).sort((a, b) => b.date.localeCompare(a.date))[0]?.price;
                       const curPrice = marketData.prices[ticker] || latestWeekly || h.avgCost;
                       const unrealizedPL = ((curPrice - h.avgCost) * h.currentShares) + ((h as any).unrealizedDividends || 0);
+                      const unsettledValue = h.currentShares * curPrice + ((h as any).unrealizedDividends || 0);
                       const totalPL = unrealizedPL + (h.realizedPL || 0);
 
-                      const roi = h.avgCost > 0
-                        ? ((curPrice / h.avgCost) - 1) * 100
-                        : (h.totalInvested === 0 && h.realizedPL !== 0 ? 100 : 0);
+                      const roi = inclusiveUnrealizedRoi(unrealizedPL, h.totalInvested);
                       const displayName = txs.length > 0 ? txs[0].name : h.name;
 
                       return (
@@ -1627,30 +1649,31 @@ export default function App() {
                                   </div>
 
                                   <div className="text-right flex-shrink-0 mt-2 md:mt-0">
-                                    <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${(h.currentShares * curPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                    <p className="text-2xl md:text-4xl lg:text-5xl font-mono font-black text-[var(--accent)] tracking-tighter leading-none mb-1 md:mb-2">${unsettledValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                     <p className={cn("text-[10px] md:text-xs font-bold font-mono", unrealizedPL >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                                      {unrealizedPL >= 0 ? '▲' : '▼'} ${(Math.abs(unrealizedPL)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({roi.toFixed(2)}%)
+                                      {unrealizedPL >= 0 ? '▲' : '▼'} ${(Math.abs(unrealizedPL)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({roi === null ? '—' : roi.toFixed(2) + '%'})
                                     </p>
                                   </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pt-8 border-t border-[var(--border)]">
-                                  <div>
-                                    <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">持有股數</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">{h.currentShares.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                  <div className="holding-metric">
+                                    <span className="holding-metric-label text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60">持有股數</span>
+                                    <p className="holding-metric-value text-[var(--text-main)]">{h.currentShares.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                   </div>
-                                  <div>
-                                    <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">目前市價</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${curPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                  <div className="holding-metric">
+                                    <span className="holding-metric-label text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60">目前市價</span>
+                                    <p className="holding-metric-value text-[var(--text-main)]">${curPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                                   </div>
-                                  <div>
-                                    <span className="text-[10px] text(--var-text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">平均成本</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.avgCost.toFixed(2)}</p>
+                                  <div className="holding-metric">
+                                    <span className="holding-metric-label text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60">平均成本</span>
+                                    <p className="holding-metric-value text-[var(--text-main)]">${h.avgCost.toFixed(2)}</p>
                                   </div>
-                                  <div>
-                                    <span className="text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60 block mb-2">總投入本金</span>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-[var(--text-main)] leading-none">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                  <div className="holding-metric">
+                                    <span className="holding-metric-label text-[10px] text-[var(--text-dim)] uppercase tracking-[0.2em] font-black opacity-60">總投入本金</span>
+                                    <p className="holding-metric-value text-[var(--text-main)]">${h.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                   </div>
+                                  <ExtraFeeSummary transactions={txs as Transaction[]} />
                                 </div>
                               </div>
 
@@ -1661,10 +1684,12 @@ export default function App() {
                                 </div>
                                 <div className="">
                                   <AnimatePresence initial={false}>
-                                    {[...(txs as Transaction[])].sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                                    {[...(txs as Transaction[])].sort(compareTransactionsNewestFirst).map(tx => (
                                       <TransactionRow
                                         key={tx.id}
                                         tx={tx}
+                                        transactions={txs}
+                                        onMove={handleMoveTransaction}
                                         onEdit={handleEditTx}
                                         onDelete={handleDeleteTransaction}
                                         onToggleRealized={handleToggleRealized}
@@ -1736,12 +1761,13 @@ export default function App() {
 
                                     pastTxs.forEach(t => {
                                       if (t.direction === 'BUY') {
-                                        historicalShares += t.quantity;
+                                        historicalShares = addShares(historicalShares, t.quantity);
                                         historicalCost += t.totalAmount;
                                       } else if (t.direction === 'SELL') {
+                                        const sale = getSaleAllocation(historicalShares, t.quantity);
                                         const currentAvg = historicalShares > 0 ? historicalCost / historicalShares : 0;
-                                        historicalShares -= t.quantity;
-                                        historicalCost -= (currentAvg * t.quantity);
+                                        historicalShares = sale.remainingShares;
+                                        historicalCost = sale.isFullSale ? 0 : historicalCost - (currentAvg * sale.quantity);
                                       }
                                     });
 

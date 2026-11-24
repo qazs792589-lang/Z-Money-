@@ -1,3 +1,4 @@
+import { getEvenDateTicks } from '../lib/chartDisplay';
 import React, { useMemo, useState, useEffect } from 'react';
 import { LayoutDashboard, Activity, Edit2, TrendingUp, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, Layers, Trash2, Calendar, X } from 'lucide-react';
 import {
@@ -15,7 +16,7 @@ import {
   Label,
   ReferenceArea
 } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Holding } from '../types';
 
@@ -57,6 +58,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   tickerMetadata,
   onUpdateAssetClass
 }) => {
+  const [dateAxisWidth, setDateAxisWidth] = useState(360);
+
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<'ratio' | 'absolute'>('ratio');
   const [mDate, setMDate] = useState(new Date().toISOString().split('T')[0]);
@@ -170,6 +173,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
       };
     }).sort((a, b) => b.value - a.value);
   }, [appData.activeHoldings, marketData.prices, weeklyPrices]);
+
+  // 圖形及文字共用下方持倉卡的股數 × 現價，不使用上方含息總計。
+  const pieTotalValue = pieData.reduce((sum, item) => sum + item.value, 0);
 
   const categoryData = useMemo(() => {
     const holdings = appData.activeHoldings || [];
@@ -313,7 +319,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         <span className="text-[11px] font-bold text-[var(--text-main)] truncate w-20">{item.name}</span>
                       </div>
                       <span className="text-[10px] font-mono font-black text-[var(--accent)]">
-                        {((item.value / (stats.totalMarketValue || 1)) * 100).toFixed(1)}%
+                        {((item.value / (pieTotalValue || 1)) * 100).toFixed(1)}%
                       </span>
                     </div>
                   ))}
@@ -402,17 +408,16 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </h3>
               </div>
               <div className="h-[340px] relative px-2">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" onResize={(width) => setDateAxisWidth(width)}>
                   <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
-                    <XAxis
+                    <XAxis ticks={getEvenDateTicks(chartData.map(point => point.name), dateAxisWidth)} interval={0} minTickGap={0} padding={{ left: 12, right: 12 }}
                       dataKey="name"
                       stroke="var(--text-dim)"
                       fontSize={9}
                       axisLine={false}
                       tickLine={false}
                       tickMargin={12}
-                      minTickGap={40}
                       tickFormatter={(str) => str.split('-').slice(1).join('/')}
                     />
                     <YAxis
@@ -633,7 +638,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </div>
               
               <div className="h-[320px] md:h-[420px] relative px-1 md:px-2 pb-4" style={{ touchAction: 'pan-y' }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" onResize={(width) => setDateAxisWidth(width)}>
                   <ComposedChart 
                     data={chartData} 
                     margin={{ top: 30, right: 10, left: 15, bottom: 20 }}
@@ -671,14 +676,13 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
-                    <XAxis 
+                    <XAxis ticks={getEvenDateTicks(chartData.map(point => point.name), dateAxisWidth)} interval={0} minTickGap={0} padding={{ left: 12, right: 12 }} 
                       dataKey="name" 
                       stroke="var(--text-dim)" 
                       fontSize={8} 
                       axisLine={false} 
                       tickLine={false} 
                       tickMargin={15}
-                      minTickGap={40}
                       tickFormatter={(str) => str.split('-').slice(1).join('/')}
                     />
                     <YAxis 

@@ -1,8 +1,10 @@
+import { compareTransactionsNewestFirst, ensureTransactionSequence } from '../lib/transactionOrder';
+import { getEvenDateTicks } from '../lib/chartDisplay';
 import { History, FileUp, ChevronDown, PieChart as PieChartIcon, Activity, TrendingUp, Edit2, Trash2, Plus, Layers, LineChart as LucideLineChart, Check, ChevronRight, Clock, Wallet, Coins } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { cn } from '../lib/utils';
 import { RealizedProfit, Transaction, Holding } from '../types';
-import { isTxRealized } from '../lib/txUtils';
+import { isTxRealized, getSellNetAmounts, getDividendNetAmounts } from '../lib/txUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 
 interface RealizedViewProps {
@@ -25,6 +27,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
   tickerMetadata = {}, holdings = [], marketPrices = {},
   weeklyPrices = []
 }) => {
+  const [dateAxisWidth, setDateAxisWidth] = useState(360);
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -78,6 +82,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       cumulativeShares: number;
       realizedCount: number;
       isHolding: boolean;
+      hasUnrealizedDividends: boolean;
       lastOpDate: string;
       totalPLTwd: number;
       totalCostTwd: number;
@@ -94,7 +99,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
       const totalRevenue = realizedItems.reduce((sum: number, r: any) => sum + (r.totalRevenueTwd !== undefined ? r.totalRevenueTwd : r.totalRevenue), 0);
       const totalRealizedShares = realizedItems.reduce((sum: number, r: RealizedProfit) => sum + (r.shares || 0), 0);
 
-      const displayRows = [...txs].sort((a, b) => a.date.localeCompare(b.date)).map(tx => {
+      const displayRows = [...ensureTransactionSequence(txs)].sort(compareTransactionsNewestFirst).map(tx => {
         const realizedInfo = realizedItems.find((r: RealizedProfit) => r.sellTxId === tx.id);
         // User requested: Skip ROI for dividends
         const isDividend = tx.direction === 'DIVIDEND';
@@ -133,7 +138,11 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
         }
       }
       
-      const totalPLTwd = totalProfit + unrealizedPLTwd;
+      // 股息的歸類不應改變全期收益；清倉後尚未歸入已實現的股息也要保留。
+      const unrealizedDividendsTwd = isUS
+        ? (h?.unrealizedDividendsTwd ?? ((h?.unrealizedDividends || 0) * 31))
+        : (h?.unrealizedDividends || 0);
+      const totalPLTwd = totalProfit + unrealizedPLTwd + unrealizedDividendsTwd;
       const totalCostTwd = totalRealizedCost + unrealizedCostTwd;
       const totalRoi = totalCostTwd > 0 ? (totalPLTwd / totalCostTwd) * 100 : 0;
 
@@ -144,8 +153,9 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
         cumulativeCost: totalRealizedCost,
         cumulativeRevenue: totalRevenue,
         cumulativeShares: totalRealizedShares,
-        realizedCount: realizedItems.length,
+        realizedCount: realizedItems.filter((r: RealizedProfit) => r.shares > 0).length,
         isHolding: currentShares > 0,
+        hasUnrealizedDividends: unrealizedDividendsTwd !== 0,
         lastOpDate,
         totalPLTwd,
         totalCostTwd,
@@ -166,7 +176,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
     const cost = list.reduce((sum: number, r: any) => sum + (r.totalCostTwd !== undefined ? r.totalCostTwd : r.totalCost), 0);
     const revenue = list.reduce((sum: number, r: any) => sum + (r.totalRevenueTwd !== undefined ? r.totalRevenueTwd : r.totalRevenue), 0);
     const roi = cost > 0 ? (profit / cost) * 100 : 0;
-    return { profit, cost, revenue, roi, count: list.length };
+    // 核心帳務僅賣出紀錄具有正股數；零股數股息保留金額但不計為交易。
+    return { profit, cost, revenue, roi, count: list.filter((r: RealizedProfit) => r.shares > 0).length };
   }, [appData?.realizedList]);
 
   const categoryData = useMemo(() => {
@@ -447,8 +458,8 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                           <th className="px-6 py-4 text-center whitespace-nowrap">單價</th>
                           <th className="px-6 py-4 text-center whitespace-nowrap">股數</th>
                           <th className="px-6 py-4 text-center whitespace-nowrap">額外費用</th>
-                          <th className="px-6 py-4 text-center whitespace-nowrap">淨收支</th>
-                          <th className="px-6 py-4 text-center whitespace-nowrap">已結損益</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">淨收支（NT$）</th>
+                          <th className="px-6 py-4 text-center whitespace-nowrap">已結損益（NT$）</th>
                           <th className="px-6 py-4 text-center whitespace-nowrap">ROI%</th>
                           <th className="px-6 py-4 text-right whitespace-nowrap">備註</th>
                         </tr>
@@ -466,7 +477,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                             ? (tx.twdAmount || (Math.abs(tx.totalAmount) * 31)) 
                             : Math.abs(tx.totalAmount);
                           
-                          const cashFlowVal = isBuy ? -twdAmount : twdAmount;
+                          const cashFlowVal = isSell ? getSellNetAmounts(tx).twd : (isBuy ? -twdAmount : getDividendNetAmounts(tx).twd);
                           
                           // Shares sign: BUY is NEGATIVE (green), SELL is POSITIVE (red)
                           const displayQty = isBuy ? -tx.quantity : (isSell ? tx.quantity : 0);
@@ -475,7 +486,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                             <tr key={tx.id} className={cn("hover:bg-[var(--bg-secondary)]/30 transition-colors", !isTxRealized(tx) && "bg-[var(--bg-tertiary)]/50")}>
                               <td className="px-6 py-4 font-mono text-xs text-center whitespace-nowrap">{tx.date}</td>
                               <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-dim)] whitespace-nowrap">
-                                {isDividend ? '-' : `$${(tx.unitPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                                {isDividend ? '-' : `${isTxUS ? 'USD $' : 'NT$'}${(tx.unitPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right whitespace-nowrap", 
                                 isBuy ? "text-[var(--danger)]" : (isSell ? "text-[var(--success)]" : "text-[var(--text-dim)]")
@@ -483,20 +494,20 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                                 {displayQty !== 0 ? `${displayQty > 0 ? '+' : ''}${displayQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className="px-6 py-4 font-mono text-xs text-right text-[var(--text-main)] whitespace-nowrap">
-                                {totalFees > 0 ? `$${totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
+                                {totalFees > 0 ? `${isTxUS ? 'USD $' : 'NT$'}${totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '-'}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-black text-right whitespace-nowrap", 
                                 isDividend ? "text-amber-500" : (cashFlowVal >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
                                 {cashFlowVal !== 0 
-                                  ? `${cashFlowVal > 0 ? '+' : ''}$${Math.round(cashFlowVal).toLocaleString()}`
+                                  ? `${cashFlowVal > 0 ? '+' : ''}NT$${Math.round(cashFlowVal).toLocaleString()}`
                                   : '-'}
                               </td>
                               <td className={cn("px-6 py-4 font-mono text-xs font-bold text-right whitespace-nowrap", 
                                 isDividend ? "text-amber-500" : (tx.realizedProfit >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")
                               )}>
                                 {tx.realizedProfit !== undefined 
-                                  ? `${tx.realizedProfit >= 0 ? '+' : ''}$${Math.round(tx.realizedProfit).toLocaleString()}`
+                                  ? `${tx.realizedProfit >= 0 ? '+' : ''}NT$${Math.round(tx.realizedProfit).toLocaleString()}`
                                   : '-'}
                               </td>
                               <td className="px-6 py-4 text-center whitespace-nowrap">
@@ -615,7 +626,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
               <Activity size={14} className="text-[var(--accent)]" /> 總資產成長趨勢 (Net Worth)
             </h4>
             <div className="h-[300px] md:h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" onResize={(width) => setDateAxisWidth(width)}>
                 <AreaChart data={netWorthChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
@@ -624,7 +635,7 @@ export const RealizedView: React.FC<RealizedViewProps> = ({
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
-                  <XAxis dataKey="date" stroke="var(--text-dim)" fontSize={10} axisLine={false} tickLine={false} tickMargin={10} tickFormatter={(str) => str?.split('-')?.slice(1)?.join('/') || str} />
+                  <XAxis ticks={getEvenDateTicks(netWorthChartData.map(point => point.date), dateAxisWidth)} interval={0} minTickGap={0} padding={{ left: 12, right: 12 }} dataKey="date" stroke="var(--text-dim)" fontSize={10} axisLine={false} tickLine={false} tickMargin={10} tickFormatter={(str) => str?.split('-')?.slice(1)?.join('/') || str} />
                   <YAxis stroke="var(--text-dim)" fontSize={10} axisLine={false} tickLine={false} tickMargin={10} width={60} tickFormatter={(v) => `$${((v || 0)/1000).toFixed(0)}k`} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }}

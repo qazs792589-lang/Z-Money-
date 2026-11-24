@@ -1,12 +1,15 @@
+import { TransactionOrderButtons } from './TransactionOrderButtons';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Edit2, Check, Trash2, StickyNote } from 'lucide-react';
 import { Transaction } from '../types';
 import { cn } from '../lib/utils';
-import { isTxRealized } from '../lib/txUtils';
+import { isTxRealized, getSellNetAmounts, getDividendNetAmounts } from '../lib/txUtils';
 
 interface TransactionRowProps {
   tx: Transaction;
+  transactions?: Transaction[];
+  onMove?: (id: string, step: -1 | 1) => void;
   onEdit: (tx: Transaction) => void;
   onDelete: (id: string) => void;
   onToggleRealized: (id: string) => void;
@@ -14,10 +17,13 @@ interface TransactionRowProps {
 
 export const TransactionRow: React.FC<TransactionRowProps> = ({
   tx,
+  transactions,
+  onMove,
   onEdit,
   onDelete,
   onToggleRealized
 }) => {
+  const isCashOutReceipt = (tx.direction === 'SELL' && getSellNetAmounts(tx).original < 0) || (tx.direction === 'DIVIDEND' && getDividendNetAmounts(tx).original < 0);
   return (
     <motion.div
       layout
@@ -56,7 +62,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
             )}
           </div>
           <div className="truncate min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
               <span className="text-[9px] font-mono font-bold text-[var(--text-dim)] opacity-60 leading-none">{tx.date}</span>
               <div className="flex items-center gap-2">
                 <button
@@ -87,16 +93,17 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                 >
                   <Trash2 size={10} />
                 </button>
+            <TransactionOrderButtons tx={tx} transactions={transactions} onMove={onMove} />
               </div>
             </div>
-            <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold truncate leading-none">
+            <p className="text-[10px] md:text-xs text-[var(--text-main)] font-mono font-bold leading-snug">
               <span className="text-[var(--text-dim)] mr-1">數量:</span>{tx.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} 股
               <span className="mx-2 opacity-30">|</span>
               <span className="text-[var(--text-dim)] mr-1">{tx.direction === 'DIVIDEND' ? '每股股息:' : '單價:'}</span><span className="opacity-50 text-[10px]">$</span>{tx.unitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               {((tx.fee || 0) + (tx.tax || 0) > 0) && (
                 <>
                   <span className="mx-2 opacity-30">|</span>
-                  <span className="text-[var(--text-dim)] mr-1">費用:</span><span className="opacity-50 text-[10px]">$</span>{((tx.fee || 0) + (tx.tax || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  <span className="text-[var(--text-dim)] mr-1">額外費用:</span><span className="opacity-50 text-[10px]">$</span>{((tx.fee || 0) + (tx.tax || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </>
               )}
             </p>
@@ -114,8 +121,8 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
           </p>
           <p className={cn(
             "text-sm md:text-base font-mono font-black leading-none mt-1",
-            tx.direction === 'BUY' ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
-          )}><span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            tx.direction === 'BUY' || isCashOutReceipt ? "text-[var(--danger)]" : tx.direction === 'DIVIDEND' ? "text-orange-400" : "text-[var(--success)]"
+          )}>{isCashOutReceipt && '−'}<span className="opacity-40 text-xs mr-0.5">$</span>{Math.abs(tx.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
       </motion.div>
     </motion.div>
